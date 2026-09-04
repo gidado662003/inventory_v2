@@ -1,0 +1,257 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum SaleStatus {
+  COMPLETED
+  CREDIT
+  VOUIDED
+  TEST
+}
+
+enum PaymentMethod {
+  CASH
+  TRANSFER
+}
+
+enum InventoryMovementType {
+  INITIAL_STOCK
+  RESTOCK
+  SALE
+  RETURN
+  ADJUSTMENT
+}
+
+enum InventoryAdjustmentReason {
+  DAMAGED
+  EXPIRED
+  LOST
+  FOUND
+  CORRECTION
+  OTHER
+}
+
+model User {
+  id String @id @default(uuid()) @db.Uuid
+
+  name     String @unique
+  password String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sales    Sale[]
+  payments Payment[]
+  saleEditLog SaleEditLog[]
+  refreshToken RefreshToken[]
+}
+
+model RefreshToken {
+  id String @id @default(uuid()) @db.Uuid
+
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id])
+
+  tokenHash String   @unique
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Product {
+  id String @id @default(uuid()) @db.Uuid
+
+  name  String @unique
+  price Decimal @db.Decimal(12, 2)
+
+  stockQuantity Int @default(0)
+
+  isActive Boolean @default(true)
+
+
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  aliases   ProductAliases[]
+  saleItems SaleItem[]
+
+  inventoryMovements InventoryMovement[]
+
+
+  @@index([name])
+  @@index([isActive])
+}
+
+model ProductAliases {
+  id        String  @id @default(uuid()) @db.Uuid
+  name      String  @unique
+  productId String  @db.Uuid
+  product   Product @relation(fields: [productId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+}
+
+// ─────────────────────────────────────────────
+// CUSTOMER
+// ─────────────────────────────────────────────
+
+model Customer {
+  id String @id @default(uuid()) @db.Uuid
+
+  name  String
+  phone String?
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sales Sale[]
+
+  @@index([name])
+  @@index([phone])
+}
+
+// ─────────────────────────────────────────────
+// SALE
+// ─────────────────────────────────────────────
+
+model Sale {
+  id String @id @default(uuid()) @db.Uuid
+
+  customerId   String? @db.Uuid
+  recordedById String  @db.Uuid
+
+  status SaleStatus @default(COMPLETED)
+
+  totalAmount Decimal @db.Decimal(12, 2)
+
+  saleDate DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customer Customer? @relation(fields: [customerId], references: [id])
+
+  recordedBy User @relation(fields: [recordedById], references: [id])
+
+  items    SaleItem[]
+  payments Payment[]
+  SaleEditLog SaleEditLog[]
+
+  @@index([customerId])
+  @@index([recordedById])
+  @@index([saleDate])
+  @@index([status])
+}
+
+// ─────────────────────────────────────────────
+// SALE ITEM
+// ─────────────────────────────────────────────
+
+model SaleItem {
+  id String @id @default(uuid()) @db.Uuid
+
+  saleId    String @db.Uuid
+  productId String @db.Uuid
+
+  quantity Int
+
+  soldAs String?
+
+  unitPrice Decimal @db.Decimal(12, 2)
+
+  subtotal Decimal @db.Decimal(12, 2)
+
+  createdAt DateTime @default(now())
+
+  sale Sale @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([saleId])
+  @@index([productId])
+}
+
+model SaleEditLog {
+  id     String @id @default(uuid()) @db.Uuid
+  saleId String @db.Uuid
+  sale   Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  editedById String @db.Uuid
+  editedBy   User   @relation(fields: [editedById], references: [id])
+
+  previousTotalAmount Decimal @db.Decimal(12, 2)
+  newTotalAmount      Decimal @db.Decimal(12, 2)
+
+  changes Json // e.g. [{ productId, previousQuantity, newQuantity }]
+
+  createdAt DateTime @default(now())
+
+  @@index([saleId])
+}
+
+model Payment {
+  id String @id @default(uuid()) @db.Uuid
+
+  saleId       String @db.Uuid
+  recordedById String @db.Uuid
+
+  amount Decimal @db.Decimal(12, 2)
+
+  method PaymentMethod
+
+  paymentDate DateTime @default(now())
+
+  createdAt DateTime @default(now())
+
+  sale Sale @relation(fields: [saleId], references: [id])
+
+  recordedBy User @relation(fields: [recordedById], references: [id])
+
+  @@index([saleId])
+  @@index([paymentDate])
+  @@index([method])
+}
+
+// ─────────────────────────────────────────────
+// INVENTORY MOVEMENT
+// ─────────────────────────────────────────────
+
+model InventoryMovement {
+  id String @id @default(uuid()) @db.Uuid
+
+  productId String @db.Uuid
+
+  type InventoryMovementType
+
+  quantity Int
+
+  reason InventoryAdjustmentReason?
+
+  referenceId String?
+
+  note String?
+
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+  @@index([type])
+  @@index([createdAt])
+  @@index([referenceId])
+}
