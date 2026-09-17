@@ -1,22 +1,24 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useCreateSale } from "@/lib/api/sales/queries";
-import { useProducts } from "@/lib/api/product/queries";
-import { useCustomers } from "@/lib/api/customer/queries";
-import { createSaleSchema } from "@/lib/api/sales/schema";
-import { Button } from "@/app/components/ui/button";
-import { Input } from "@/app/components/ui/input";
-import { Modal } from "@/app/components/ui/modal";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
+  Search,
+  Trash2,
+  ArrowLeft,
   Banknote,
   Landmark,
-  Search,
-  ShoppingCart,
   Split,
-  Trash2,
-  X,
 } from "lucide-react";
+
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
+import { ConfirmationModal } from "../ui/confirmation-modal";
+
+import { useProducts } from "@/lib/api/product/queries";
+import { useCustomers } from "@/lib/api/customer/queries";
+import { useCreateSale } from "@/lib/api/sales/queries";
+import { createSaleSchema } from "@/lib/api/sales/schema";
 
 type Product = {
   id: string;
@@ -24,469 +26,214 @@ type Product = {
   price: number;
   stockQuantity: number;
   isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-  aliases?: {
-    id: string;
-    name: string;
-    productId: string;
-    createdAt?: string;
-  }[];
+  aliases?: { id: string; name: string }[];
 };
 
 type LineItem = {
   id: string;
   productId: string;
-  quantity: string;
   displayName: string;
   soldAs?: string;
+  quantity: string;
 };
 
-type Payment = {
-  amount: number;
-  method: "CASH" | "TRANSFER";
-};
-
-type ProductSearchProps = {
-  products: Product[];
-  onAdd: (productId: string, displayName: string) => void;
-};
-
-function ProductSearch({ products, onAdd }: ProductSearchProps) {
-  const [query, setQuery] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
-
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const filtered = useMemo(() => {
-    const search = query.trim().toLowerCase();
-
-    if (!search) {
-      return products.filter((product) => product.isActive).slice(0, 6);
-    }
-
-    return products
-      .filter((product) => {
-        const nameMatches = product.name.toLowerCase().includes(search);
-
-        const aliasMatches = product.aliases?.some((alias) =>
-          alias.name.toLowerCase().includes(search),
-        );
-
-        return nameMatches || aliasMatches;
-      })
-      .filter((product) => product.isActive)
-      .slice(0, 6);
-  }, [products, query]);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  function handleSelectProduct(product: Product) {
-    const search = query.trim().toLowerCase();
-
-    const aliasMatch = product.aliases?.find((alias) =>
-      alias.name.toLowerCase().includes(search),
-    );
-
-    const displayName = aliasMatch?.name ?? product.name;
-
-    onAdd(product.id, displayName);
-
-    setQuery("");
-    setIsOpen(false);
-  }
-
-  return (
-    <div ref={containerRef} className="relative">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-
-        <Input
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setIsOpen(true);
-          }}
-          onFocus={() => setIsOpen(true)}
-          placeholder="Search product..."
-          className="pl-9 pr-9"
-        />
-
-        {query && (
-          <button
-            type="button"
-            onClick={() => {
-              setQuery("");
-              setIsOpen(true);
-            }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
-      </div>
-
-      {isOpen && filtered.length > 0 && (
-        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-md border bg-background shadow-md">
-          {filtered.map((product) => {
-            const search = query.trim().toLowerCase();
-
-            const aliasMatch = product.aliases?.find((alias) =>
-              alias.name.toLowerCase().includes(search),
-            );
-
-            const displayName = aliasMatch?.name ?? product.name;
-
-            return (
-              <button
-                key={product.id}
-                type="button"
-                onClick={() => handleSelectProduct(product)}
-                className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-muted"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{displayName}</p>
-
-                  {displayName !== product.name && (
-                    <p className="truncate text-xs text-muted-foreground">
-                      {product.name}
-                    </p>
-                  )}
-                </div>
-
-                <span className="ml-3 shrink-0 text-sm text-muted-foreground">
-                  ₦{product.price.toLocaleString()}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {isOpen && query && filtered.length === 0 && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border bg-background p-3 text-sm text-muted-foreground shadow-md">
-          No products found
-        </div>
-      )}
-    </div>
-  );
-}
-
-type CreateSaleFormProps = {
-  open: boolean;
-  onClose: () => void;
-};
-
-export function CreateSaleForm({ open, onClose }: CreateSaleFormProps) {
+export function CreateSalePage() {
+  const router = useRouter();
   const { data: products = [] } = useProducts();
   const { data: customers = [] } = useCustomers();
   const createSale = useCreateSale();
 
+  const [query, setQuery] = useState("");
   const [items, setItems] = useState<LineItem[]>([]);
-
   const [paymentMethod, setPaymentMethod] = useState<
     "CASH" | "TRANSFER" | "SPLIT"
   >("CASH");
-
-  const [cashAmount, setCashAmount] = useState("");
-  const [transferAmount, setTransferAmount] = useState("");
-
-  const [isCredit, setIsCredit] = useState(false);
+  const [cash, setCash] = useState("");
+  const [credit, setCredit] = useState(false);
   const [customerId, setCustomerId] = useState("");
-  const [creditPaid, setCreditPaid] = useState("");
+  const [paidNow, setPaidNow] = useState("");
   const [creditMethod, setCreditMethod] = useState<"CASH" | "TRANSFER">("CASH");
+  const [confirm, setConfirm] = useState(false);
 
-  const [errors, setErrors] = useState<{
-    quantity?: string;
-    customer?: string;
-    payment?: string;
-  }>({});
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase().trim();
+    return products
+      .filter(
+        (p) =>
+          p.isActive &&
+          (!q ||
+            p.name.toLowerCase().includes(q) ||
+            p.aliases?.some((a) => a.name.toLowerCase().includes(q))),
+      )
+      .slice(0, 6);
+  }, [products, query]);
 
-  function addProduct(productId: string, displayName: string) {
-    setItems((prev) => {
-      const exists = prev.some(
-        (item) =>
-          item.productId === productId && item.displayName === displayName,
-      );
-
-      if (exists) {
-        return prev;
-      }
-
-      const product = products.find((p) => p.id === productId);
-      const aliasMatch = product?.aliases?.find(
-        (alias) => alias.name === displayName,
-      );
-
-      return [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          productId,
-          quantity: "",
-          displayName,
-          soldAs: aliasMatch?.name,
-        },
-      ];
-    });
-  }
-
-  function updateQuantity(lineItemId: string, quantity: string) {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === lineItemId
-          ? {
-              ...item,
-              quantity,
-            }
-          : item,
-      ),
+  function addProduct(product: Product) {
+    const alias = product.aliases?.find((a) =>
+      a.name.toLowerCase().includes(query.toLowerCase()),
     );
-  }
-
-  function removeItem(lineItemId: string) {
-    setItems((prev) => prev.filter((item) => item.id !== lineItemId));
-  }
-
-  const total = useMemo(() => {
-    return items.reduce((sum, item) => {
-      const product = products.find((product) => product.id === item.productId);
-
-      if (!product) return sum;
-
-      return sum + product.price * (Number(item.quantity) || 0);
-    }, 0);
-  }, [items, products]);
-
-  const creditPaidNumber = Number(creditPaid) || 0;
-
-  const creditBalance = Math.max(total - creditPaidNumber, 0);
-
-  function getPayments(): Payment[] {
-    if (isCredit) {
-      return [
-        {
-          amount: creditPaidNumber,
-          method: creditMethod,
-        },
-      ];
-    }
-
-    if (paymentMethod === "CASH") {
-      return [
-        {
-          amount: total,
-          method: "CASH",
-        },
-      ];
-    }
-
-    if (paymentMethod === "TRANSFER") {
-      return [
-        {
-          amount: total,
-          method: "TRANSFER",
-        },
-      ];
-    }
-
-    const cash = Math.min(Number(cashAmount) || 0, total);
-
-    const transfer = Math.max(total - cash, 0);
-
-    const payments: Payment[] = [];
-
-    if (cash > 0) {
-      payments.push({
-        amount: cash,
-        method: "CASH",
-      });
-    }
-
-    if (transfer > 0) {
-      payments.push({
-        amount: transfer,
-        method: "TRANSFER",
-      });
-    }
-
-    return payments;
-  }
-
-  function resetForm() {
-    setItems([]);
-    setPaymentMethod("CASH");
-    setCashAmount("");
-    setTransferAmount("");
-    setIsCredit(false);
-    setCustomerId("");
-    setCreditPaid("");
-    setCreditMethod("CASH");
-    setErrors({});
-  }
-
-  function handleClose() {
-    resetForm();
-    onClose();
-  }
-
-  function handleSubmit() {
-    const newErrors: typeof errors = {};
-
-    if (items.length === 0) {
-      newErrors.quantity = "Add at least one product";
-    }
+    const displayName = alias?.name ?? product.name;
 
     if (
       items.some(
-        (item) =>
-          !item.quantity ||
-          Number(item.quantity) <= 0 ||
-          !Number.isInteger(Number(item.quantity)),
+        (i) => i.productId === product.id && i.displayName === displayName,
       )
-    ) {
-      newErrors.quantity = "Enter a valid quantity for all products";
-    }
-
-    if (isCredit && !customerId) {
-      newErrors.customer = "Select a customer for credit sales";
-    }
-
-    if (isCredit && creditPaidNumber > total) {
-      newErrors.payment = "Amount paid cannot be greater than the total";
-    }
-
-    if (
-      !isCredit &&
-      paymentMethod === "SPLIT" &&
-      (Number(cashAmount) || 0) > total
-    ) {
-      newErrors.payment = "Cash amount cannot be greater than the total";
-    }
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+    )
       return;
-    }
 
+    setItems([
+      ...items,
+      {
+        id: crypto.randomUUID(),
+        productId: product.id,
+        displayName,
+        soldAs: alias?.name,
+        quantity: "",
+      },
+    ]);
+
+    setQuery("");
+  }
+
+  const total = useMemo(
+    () =>
+      items.reduce((sum, item) => {
+        const p = products.find((x) => x.id === item.productId);
+        return sum + (p?.price || 0) * (Number(item.quantity) || 0);
+      }, 0),
+    [items, products],
+  );
+
+  function submit() {
     const data = {
-      customerId: customerId || undefined,
-
-      items: items.map((item) => ({
-        productId: item.productId,
-        quantity: Number(item.quantity),
-        soldAs: item.soldAs || undefined,
+      customerId: credit ? customerId || undefined : undefined,
+      items: items.map((i) => ({
+        productId: i.productId,
+        quantity: Number(i.quantity),
+        soldAs: i.soldAs,
       })),
-
-      payment: getPayments(),
+      payment: credit
+        ? [{ amount: Number(paidNow) || 0, method: creditMethod }]
+        : paymentMethod === "SPLIT"
+          ? [
+              { amount: Number(cash) || 0, method: "CASH" },
+              {
+                amount: Math.max(total - (Number(cash) || 0), 0),
+                method: "TRANSFER",
+              },
+            ].filter((p) => p.amount > 0)
+          : [{ amount: total, method: paymentMethod }],
     };
 
-    const result = createSaleSchema.safeParse(data);
+    const parsed = createSaleSchema.safeParse(data);
+    if (!parsed.success) return;
 
-    if (!result.success) {
-      setErrors({
-        payment: "Please check the sale details",
-      });
-      return;
-    }
-
-    setErrors({});
-
-    createSale.mutate(result.data, {
-      onSuccess: () => {
-        resetForm();
-        onClose();
-      },
+    createSale.mutate(parsed.data, {
+      onSuccess: () => router.push("/sales"),
     });
   }
 
   return (
-    <Modal
-      open={open}
-      onClose={handleClose}
-      title="New Sale"
-      size="full"
-      hideDefaultClose
-    >
-      <div className="grid gap-6 lg:grid-cols-5">
-        {/* Products */}
-        <div className="space-y-4 lg:col-span-3">
-          <div>
-            <h3 className="mb-2 text-sm font-medium">Products</h3>
+    <div className="min-h-full ">
+      {/* <div className="mb-6 flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={() => router.back()}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
 
-            <ProductSearch products={products} onAdd={addProduct} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {products
-              .filter((product) => product.isActive)
-              .slice(0, 6)
-              .map((product) => (
-                <button
-                  key={product.id}
-                  type="button"
-                  onClick={() => addProduct(product.id, product.name)}
-                  className="rounded-md border p-3 text-left transition hover:bg-muted"
-                >
-                  <p className="truncate text-sm font-medium">{product.name}</p>
-
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    ₦{product.price.toLocaleString()}
-                  </p>
-                </button>
-              ))}
-          </div>
+        <div>
+          <h1 className="text-xl font-semibold">New Sale</h1>
+          <p className="text-sm text-muted-foreground">
+            Add products and complete the payment
+          </p>
         </div>
+      </div> */}
 
-        {/* Cart */}
-        <div className="space-y-4 lg:col-span-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ShoppingCart className="h-4 w-4" />
+      <div className="grid w-full gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <section className="min-w-0 space-y-4">
+          <div className="rounded-xl border bg-background p-4">
+            <p className="mb-2 text-sm font-medium">Add product</p>
 
-              <h3 className="text-sm font-medium">Cart</h3>
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+
+              <Input
+                className="pl-9"
+                placeholder="Search product or alias..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+
+              {query && filtered.length > 0 && (
+                <div className="absolute z-50 mt-2 w-full overflow-hidden rounded-lg border bg-background shadow-lg">
+                  {filtered.map((p) => {
+                    const alias = p.aliases?.find((a) =>
+                      a.name.toLowerCase().includes(query.toLowerCase()),
+                    );
+
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => addProduct(p)}
+                        className="flex w-full items-center justify-between border-b px-4 py-3 text-left last:border-0 hover:bg-muted"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">
+                            {alias?.name ?? p.name}
+                          </p>
+
+                          {alias && (
+                            <p className="truncate text-xs text-muted-foreground">
+                              {p.name}
+                            </p>
+                          )}
+                        </div>
+
+                        <span className="ml-4 shrink-0 text-sm font-medium">
+                          ₦{p.price.toLocaleString()}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {query && filtered.length === 0 && (
+                <div className="absolute z-50 mt-2 w-full rounded-lg border bg-background p-4 text-sm text-muted-foreground shadow-lg">
+                  No products found
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-xl border bg-background">
+            <div className="flex items-center justify-between border-b px-4 py-3">
+              <h2 className="font-medium">Cart</h2>
+              <span className="text-sm text-muted-foreground">
+                {items.length} {items.length === 1 ? "item" : "items"}
+              </span>
             </div>
 
-            <span className="text-sm text-muted-foreground">
-              {items.length} item
-              {items.length !== 1 ? "s" : ""}
-            </span>
-          </div>
-
-          <div className="max-h-64 space-y-2 overflow-y-auto">
             {items.length === 0 ? (
-              <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
-                Cart is empty
+              <div className="px-4 py-12 text-center text-sm text-muted-foreground">
+                Your cart is empty
               </div>
             ) : (
-              items.map((item) => {
-                const product = products.find(
-                  (product) => product.id === item.productId,
-                );
+              <div className="divide-y">
+                {items.toReversed().map((item) => {
+                  const product = products.find((p) => p.id === item.productId);
 
-                if (!product) return null;
+                  if (!product) return null;
 
-                const itemTotal = product.price * (Number(item.quantity) || 0);
+                  const itemTotal =
+                    product.price * (Number(item.quantity) || 0);
 
-                return (
-                  <div key={item.id} className="rounded-md border p-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-3 px-4 py-4"
+                    >
+                      <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">
                           {item.displayName}
                         </p>
@@ -497,215 +244,266 @@ export function CreateSaleForm({ open, onClose }: CreateSaleFormProps) {
                           </p>
                         )}
 
-                        <p className="text-xs text-muted-foreground">
+                        <p className="mt-1 text-xs text-muted-foreground">
                           ₦{product.price.toLocaleString()} each
                         </p>
                       </div>
 
+                      <Input
+                        variant="numeric"
+                        placeholder="Qty"
+                        value={item.quantity}
+                        onChange={(e) =>
+                          setItems(
+                            items.map((i) =>
+                              i.id === item.id
+                                ? {
+                                    ...i,
+                                    quantity: e.target.value.replace(
+                                      /[^0-9]/g,
+                                      "",
+                                    ),
+                                  }
+                                : i,
+                            ),
+                          )
+                        }
+                        className="w-20 text-center"
+                      />
+
+                      <span className="w-24 shrink-0 text-right text-sm font-medium">
+                        ₦{itemTotal.toLocaleString()}
+                      </span>
+
                       <button
                         type="button"
-                        onClick={() => removeItem(item.id)}
-                        className="text-muted-foreground hover:text-destructive"
+                        onClick={() =>
+                          setItems(items.filter((i) => i.id !== item.id))
+                        }
+                        className="rounded-md p-2 text-muted-foreground transition hover:bg-muted hover:text-destructive"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
-
-                    <div className="mt-3 flex items-center justify-between">
-                      <Input
-                        type="number"
-                        step="1"
-                        value={item.quantity}
-                        onChange={(e) =>
-                          updateQuantity(item.id, e.target.value)
-                        }
-                        className="w-20 text-center text-sm"
-                      />
-
-                      <span className="text-sm font-medium">
-                        ₦{itemTotal.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })
+                  );
+                })}
+              </div>
             )}
           </div>
+        </section>
 
-          <div className="border-t pt-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Total</span>
-
-              <span className="text-xl font-semibold">
+        <aside className="space-y-4">
+          <div className="rounded-xl border bg-background p-4">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="font-medium">Payment</h2>
+              <span className="text-lg font-semibold">
                 ₦{total.toLocaleString()}
               </span>
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Payment */}
-      <div className="mt-6 space-y-4 border-t pt-6">
-        <h3 className="text-sm font-medium">Payment</h3>
-
-        {!isCredit && (
-          <div className="grid grid-cols-3 gap-2">
-            <Button
-              type="button"
-              variant={paymentMethod === "CASH" ? "default" : "outline"}
-              onClick={() => setPaymentMethod("CASH")}
-              className="gap-2"
-            >
-              <Banknote className="h-4 w-4" />
-              Cash
-            </Button>
-
-            <Button
-              type="button"
-              variant={paymentMethod === "TRANSFER" ? "default" : "outline"}
-              onClick={() => setPaymentMethod("TRANSFER")}
-              className="gap-2"
-            >
-              <Landmark className="h-4 w-4" />
-              Transfer
-            </Button>
-
-            <Button
-              type="button"
-              variant={paymentMethod === "SPLIT" ? "default" : "outline"}
-              onClick={() => setPaymentMethod("SPLIT")}
-              className="gap-2"
-            >
-              <Split className="h-4 w-4" />
-              Split
-            </Button>
-          </div>
-        )}
-
-        {paymentMethod === "SPLIT" && !isCredit && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Input
-              label="Cash"
-              type="number"
-              value={cashAmount}
-              onChange={(e) => setCashAmount(e.target.value)}
-              placeholder="0"
-            />
-
-            <Input
-              label="Transfer"
-              type="number"
-              value={
-                total > 0
-                  ? String(Math.max(total - (Number(cashAmount) || 0), 0))
-                  : transferAmount
-              }
-              onChange={(e) => setTransferAmount(e.target.value)}
-              placeholder="0"
-            />
-          </div>
-        )}
-
-        <div className="flex items-center gap-2">
-          <input
-            id="credit"
-            type="checkbox"
-            checked={isCredit}
-            onChange={(e) => setIsCredit(e.target.checked)}
-            className="h-4 w-4"
-          />
-
-          <label htmlFor="credit" className="text-sm font-medium">
-            Credit sale
-          </label>
-        </div>
-
-        {isCredit && (
-          <div className="space-y-4 rounded-md border p-4">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium">
-                Customer
-              </label>
-
-              <select
-                value={customerId}
-                onChange={(e) => setCustomerId(e.target.value)}
-                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            <div className="grid grid-cols-3 gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={paymentMethod === "CASH" ? "default" : "outline"}
+                onClick={() => setPaymentMethod("CASH")}
               >
-                <option value="">Select customer</option>
+                <Banknote className="h-4 w-4" />
+                Cash
+              </Button>
 
-                {customers.map((customer) => (
-                  <option key={customer.id} value={customer.id}>
-                    {customer.name}
-                  </option>
-                ))}
-              </select>
+              <Button
+                type="button"
+                size="sm"
+                variant={paymentMethod === "TRANSFER" ? "default" : "outline"}
+                onClick={() => setPaymentMethod("TRANSFER")}
+              >
+                <Landmark className="h-4 w-4" />
+                Transfer
+              </Button>
+
+              <Button
+                type="button"
+                size="sm"
+                variant={paymentMethod === "SPLIT" ? "default" : "outline"}
+                onClick={() => setPaymentMethod("SPLIT")}
+              >
+                <Split className="h-4 w-4" />
+                Split
+              </Button>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Input
-                label="Amount paid now"
-                type="number"
-                value={creditPaid}
-                onChange={(e) => setCreditPaid(e.target.value)}
-                placeholder="0"
+            {paymentMethod === "SPLIT" && !credit && (
+              <div className="mt-4 space-y-2">
+                <Input
+                  label="Cash amount"
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={cash}
+                  onChange={(e) => setCash(e.target.value)}
+                />
+
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Transfer</span>
+                  <span>
+                    ₦{Math.max(total - (Number(cash) || 0), 0).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <label className="mt-5 flex cursor-pointer items-center gap-2 border-t pt-4 text-sm">
+              <input
+                type="checkbox"
+                checked={credit}
+                onChange={(e) => setCredit(e.target.checked)}
+                className="h-4 w-4"
               />
+              Credit sale
+            </label>
 
-              <div>
-                <label className="mb-1.5 block text-sm font-medium">
-                  Payment method
-                </label>
+            {credit && (
+              <div className="mt-4 space-y-4 rounded-lg bg-muted/40 p-3">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium">
+                    Customer
+                  </label>
 
-                <select
-                  value={creditMethod}
-                  onChange={(e) =>
-                    setCreditMethod(e.target.value as "CASH" | "TRANSFER")
-                  }
-                  className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-                >
-                  <option value="CASH">Cash</option>
-                  <option value="TRANSFER">Transfer</option>
-                </select>
+                  <select
+                    className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                    value={customerId}
+                    onChange={(e) => setCustomerId(e.target.value)}
+                  >
+                    <option value="">Select customer</option>
+
+                    {customers.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <Input
+                  label="Paid now"
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={paidNow}
+                  onChange={(e) => setPaidNow(e.target.value)}
+                />
+
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium">
+                    Payment method
+                  </label>
+
+                  <select
+                    className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                    value={creditMethod}
+                    onChange={(e) =>
+                      setCreditMethod(e.target.value as "CASH" | "TRANSFER")
+                    }
+                  >
+                    <option value="CASH">Cash</option>
+                    <option value="TRANSFER">Transfer</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center justify-between border-t pt-3">
+                  <span className="text-sm text-muted-foreground">Balance</span>
+
+                  <span className="font-semibold">
+                    ₦
+                    {Math.max(
+                      total - (Number(paidNow) || 0),
+                      0,
+                    ).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={() => router.push("/sales")}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              type="button"
+              className="flex-1"
+              disabled={!items.length || createSale.isPending}
+              onClick={() => setConfirm(true)}
+            >
+              {createSale.isPending ? "Creating..." : "Create Sale"}
+            </Button>
+          </div>
+        </aside>
+      </div>
+
+      <ConfirmationModal
+        isOpen={confirm}
+        onClose={() => setConfirm(false)}
+        onConfirm={submit}
+        title="Confirm Sale"
+        message={
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              You are about to create a sale with the following items:
+            </p>
+
+            <div className="max-h-48 overflow-y-auto rounded-md border bg-muted/30 p-3">
+              <div className="space-y-2">
+                {items.map((item) => {
+                  const product = products.find((p) => p.id === item.productId);
+                  const itemTotal =
+                    (product?.price || 0) * (Number(item.quantity) || 0);
+
+                  return (
+                    <div key={item.id} className="flex justify-between text-sm">
+                      <span className="truncate pr-4">
+                        {item.displayName} × {item.quantity || 0}
+                      </span>
+                      <span className="shrink-0 font-medium">
+                        ₦{itemTotal.toLocaleString()}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
-            <div className="flex items-center justify-between border-t pt-3">
-              <span className="text-sm text-muted-foreground">Balance</span>
-
-              <span className="font-semibold">
-                ₦{creditBalance.toLocaleString()}
-              </span>
+            <div className="flex justify-between border-t pt-2 text-sm font-semibold">
+              <span>Total</span>
+              <span>₦{total.toLocaleString()}</span>
             </div>
+
+            {credit && (
+              <div className="text-xs text-muted-foreground">
+                <p>
+                  Customer:{" "}
+                  {customers.find((c) => c.id === customerId)?.name ||
+                    "Not selected"}
+                </p>
+                <p>Paid now: ₦{(Number(paidNow) || 0).toLocaleString()}</p>
+                <p>
+                  Balance: ₦
+                  {Math.max(total - (Number(paidNow) || 0), 0).toLocaleString()}
+                </p>
+              </div>
+            )}
           </div>
-        )}
-
-        {errors.quantity && (
-          <p className="text-sm text-destructive">{errors.quantity}</p>
-        )}
-
-        {errors.customer && (
-          <p className="text-sm text-destructive">{errors.customer}</p>
-        )}
-
-        {errors.payment && (
-          <p className="text-sm text-destructive">{errors.payment}</p>
-        )}
-      </div>
-
-      {/* Actions */}
-      <div className="mt-6 flex justify-end gap-2 border-t pt-4">
-        <Button type="button" variant="outline" onClick={handleClose}>
-          Cancel
-        </Button>
-
-        <Button
-          type="button"
-          onClick={handleSubmit}
-          disabled={createSale.isPending || items.length === 0}
-        >
-          {createSale.isPending ? "Creating..." : "Create Sale"}
-        </Button>
-      </div>
-    </Modal>
+        }
+        confirmText="Create Sale"
+        cancelText="Review"
+      />
+    </div>
   );
 }

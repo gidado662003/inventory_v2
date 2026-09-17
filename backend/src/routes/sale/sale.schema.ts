@@ -23,8 +23,8 @@ export const salesId = z.uuid();
 export type salesSchemaInput = z.infer<typeof salesSchema>;
 
 export const getSalesQuerySchema = z.object({
-  startDate: z.date().optional(),
-  endDate: z.date().optional(),
+  startDate: z.coerce.date().optional(),
+  endDate: z.coerce.date().optional(),
   status: z.enum(SaleStatus).optional(),
   customerId: z.string().optional(),
   page: z.coerce.number().int().min(1).default(1),

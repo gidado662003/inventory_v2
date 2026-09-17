@@ -6,5 +6,5 @@ export default async function CustomerDetailPage({
 }: PageProps<"/customers/[id]">) {
   const { id } = await params;
   const customer = await getCustomer(id);
-  return <CustomerDetailView customer={customer} />;
+  return <CustomerDetailView customer={customer} id={id} />;
 }

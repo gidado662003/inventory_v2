@@ -4,11 +4,21 @@ import {
   customerDetailSchema,
   customerSchema,
   updateCustomerSchema,
+  createCustomerPaymentInputSchema,
+  CreateCustomerPaymentInput,
+  customerPaymentSchema,
+  CustomerPayment,
   type CreateCustomerInput,
   type Customer,
   type CustomerDetail,
   type UpdateCustomerInput,
 } from "./schema";
+import {
+  createPaymentSchema,
+  paymentSchema,
+  CreatePaymentInput,
+  Payment,
+} from "../payment/schema";
 import { z } from "zod";
 
 export async function fetchCustomers(): Promise<Customer[]> {
@@ -36,4 +46,14 @@ export async function updateCustomer(
   const parsed = updateCustomerSchema.parse(input);
   const { data } = await clientHttp.put(`/customer/${id}`, parsed);
   return customerSchema.parse(data);
+}
+
+export async function createCustomerPayment(
+  input: CreateCustomerPaymentInput,
+): Promise<CustomerPayment> {
+  const parsed = createCustomerPaymentInputSchema.parse(input);
+
+  const { data } = await clientHttp.post("/customer/payment", parsed);
+
+  return customerPaymentSchema.parse(data);
 }

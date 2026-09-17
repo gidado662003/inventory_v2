@@ -23,7 +23,7 @@ function SalesSingleView({ sale, id }: { sale: Sale; id: string }) {
             Back to sales
           </Link>
           {sale.status === "CREDIT" && (
-            <AddPaymentButton saleId={id} amountLeft={balance} />
+            <AddPaymentButton saleId={id} amountLeft={balance} type="sale" />
           )}
         </div>
 

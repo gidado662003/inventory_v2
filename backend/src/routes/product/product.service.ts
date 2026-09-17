@@ -38,10 +38,40 @@ const productService = {
 
     return newProduct;
   },
-  getProduct: async () => {
+  getProduct: async (searchString?: string) => {
     const product = await prisma.product.findMany({
-      include: { aliases: true },
+      where: searchString
+        ? {
+            OR: [
+              {
+                name: {
+                  contains: searchString,
+                  mode: "insensitive",
+                },
+              },
+              {
+                aliases: {
+                  some: {
+                    name: {
+                      contains: searchString,
+                      mode: "insensitive",
+                    },
+                  },
+                },
+              },
+            ],
+          }
+        : undefined,
+
+      include: {
+        aliases: true,
+      },
+
+      orderBy: {
+        stockQuantity: "desc",
+      },
     });
+
     return product;
   },
   updateProduct: async (productId: string, data: updateProductInput) => {

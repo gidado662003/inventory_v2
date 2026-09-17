@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
 import { Button } from "@/app/components/ui/button";
+import { ThemeToggle } from "@/app/components/theme-toggle";
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -66,6 +67,9 @@ export function SidebarNav({
       </nav>
 
       <div className="mt-8 border-t border-border/40 pt-4">
+        <div>
+          <ThemeToggle />
+        </div>
         <Button
           variant="ghost"
           size="sm"

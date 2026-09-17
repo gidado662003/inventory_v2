@@ -116,7 +116,7 @@ export const paymentService = {
 
     const [payments, total] = await Promise.all([
       prisma.payment.findMany({
-        where,
+        // where,
         include: {
           sale: {
             select: {
@@ -126,8 +126,8 @@ export const paymentService = {
           },
         },
         orderBy: { paymentDate: "desc" },
-        skip: (query.page - 1) * query.limit,
-        take: query.limit,
+        // skip: (query.page - 1) * query.limit,
+        // take: query.limit,
       }),
       prisma.payment.count({ where }),
     ]);

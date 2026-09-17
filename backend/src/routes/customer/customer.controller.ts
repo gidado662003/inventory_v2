@@ -1,7 +1,11 @@
 import { catchAsync } from "../../utils/catchAsync";
 import { AppError } from "../../utils/AppError";
 import customerService from "./customer.service";
-import { customerSchema, updateSchema } from "./customer.schema";
+import {
+  customerSchema,
+  updateSchema,
+  customerPaymentSchema,
+} from "./customer.schema";
 
 const customerController = {
   createCustomer: catchAsync(async (req, res) => {
@@ -29,6 +33,17 @@ const customerController = {
     }
     const customerId = req.params.customerId as string;
     const response = await customerService.updateCustomer(customerId, data);
+    res.status(200).json({ success: true, response });
+  }),
+  customerPayment: catchAsync(async (req, res) => {
+    const { data, success } = customerPaymentSchema.safeParse(req.body);
+    if (!success) {
+      throw new AppError("bad request", 400);
+    }
+    const response = await customerService.customerPayment(
+      data,
+      req.user?.id as string,
+    );
     res.status(200).json({ success: true, response });
   }),
 };

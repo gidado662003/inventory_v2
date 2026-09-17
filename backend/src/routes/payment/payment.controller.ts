@@ -7,8 +7,9 @@ import {
 } from "./payment.schema";
 export const paymentController = {
   createPayment: catchAsync(async (req, res) => {
-    const { data, success } = paymentWithSaleSchema.safeParse(req.body);
-    const recordedById = "743877d1-41bb-494a-9404-10132e23fad9";
+    const { data, success, error } = paymentWithSaleSchema.safeParse(req.body);
+
+    const recordedById = req.user?.id as string;
     if (!success) {
       throw new AppError("bad request", 400);
     }

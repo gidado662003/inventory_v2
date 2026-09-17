@@ -109,12 +109,13 @@ export const salesService = {
     });
   },
   getSales: async (query: GetSalesQuery) => {
-    const endDate = query.endDate
-      ? new Date(query.endDate)
-      : endOfDay(new Date());
     const startDate = query.startDate
-      ? new Date(query.startDate)
+      ? startOfDay(new Date(query.startDate))
       : startOfDay(new Date());
+
+    const endDate = query.endDate
+      ? endOfDay(new Date(query.endDate))
+      : endOfDay(new Date());
 
     if (startDate > endDate) {
       throw new AppError("startDate cannot be after endDate", 400);
@@ -135,6 +136,56 @@ export const salesService = {
         include: {
           items: true,
           customer: true,
+        },
+        orderBy: { createdAt: "desc" },
+        skip: (query.page - 1) * query.limit,
+        take: query.limit,
+      }),
+      prisma.sale.count({ where }),
+    ]);
+
+    return {
+      sales,
+      pagination: {
+        page: query.page,
+        limit: query.limit,
+        total,
+        totalPages: Math.ceil(total / query.limit),
+      },
+    };
+  },
+  getSalesItems: async (query: GetSalesQuery) => {
+    const startDate = query.startDate
+      ? startOfDay(new Date(query.startDate))
+      : startOfDay(new Date());
+
+    const endDate = query.endDate
+      ? endOfDay(new Date(query.endDate))
+      : endOfDay(new Date());
+
+    if (startDate > endDate) {
+      throw new AppError("startDate cannot be after endDate", 400);
+    }
+
+    const where = {
+      createdAt: {
+        gte: startDate,
+        lte: endDate,
+      },
+      ...(query.status && { status: query.status }),
+      ...(query.customerId && { customerId: query.customerId }),
+    };
+
+    const [sales, total] = await Promise.all([
+      prisma.saleItem.findMany({
+        where,
+        include: {
+          sale: {
+            select: {
+              customer: { select: { name: true } },
+            },
+          },
+          product: { select: { id: true, name: true } },
         },
         orderBy: { createdAt: "desc" },
         skip: (query.page - 1) * query.limit,
@@ -275,6 +326,7 @@ export const salesService = {
       return updatedSale;
     });
   },
+
   getSalesSummary: async (query: GetSalesSummaryQuery) => {
     const targetDate = query.date ? new Date(query.date) : new Date();
     const start = startOfDay(targetDate);

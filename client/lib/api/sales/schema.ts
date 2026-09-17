@@ -17,6 +17,15 @@ export const saleItemSchema = z.object({
   unitPrice: decimalSchema,
   subtotal: decimalSchema,
   createdAt: dateTimeSchema.optional(),
+  sale: z
+    .object({
+      customer: z
+        .object({
+          name: z.string(),
+        })
+        .nullable(),
+    })
+    .optional(),
   product: z
     .object({
       id: z.string().uuid(),
@@ -96,6 +105,11 @@ export const salesListResponseSchema = z.object({
   pagination: paginationSchema,
 });
 
+export const salesItemListResponseSchema = z.object({
+  sales: z.array(saleItemSchema),
+  pagination: paginationSchema,
+});
+
 export const createSaleResponseSchema = z.object({
   sale: saleSchema,
   payments: z.array(salePaymentSchema),
@@ -144,7 +158,10 @@ export const salesSummarySchema = z.object({
 export type SalesSummaryResponse = z.infer<typeof salesSummarySchema>;
 
 export type Sale = z.infer<typeof saleSchema>;
+export type SaleItem = z.infer<typeof saleItemSchema>;
+
 export type CreateSaleInput = z.infer<typeof createSaleSchema>;
 export type EditSaleItemInput = z.infer<typeof editSaleItemSchema>;
 export type SalesListQuery = z.infer<typeof salesListQuerySchema>;
 export type SalesListResponse = z.infer<typeof salesListResponseSchema>;
+export type SalesIemListResponse = z.infer<typeof salesItemListResponseSchema>;

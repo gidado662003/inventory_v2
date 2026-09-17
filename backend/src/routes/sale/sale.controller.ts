@@ -27,11 +27,21 @@ export const salesController = {
     const result = await salesService.getSales(data);
     res.status(200).json({ success: true, response: result });
   }),
+  getSalesItems: catchAsync(async (req, res) => {
+    const { data, success } = getSalesQuerySchema.safeParse(req.query);
+
+    if (!success) {
+      throw new AppError("bad request", 400);
+    }
+    const result = await salesService.getSalesItems(data);
+    res.status(200).json({ success: true, response: result });
+  }),
   getSalesById: catchAsync(async (req, res) => {
     const salesId = req.params.id as string;
     const response = await salesService.getSaleById(salesId);
     res.status(200).json({ success: true, response });
   }),
+
   editSaleItems: catchAsync(async (req: Request, res: Response) => {
     const { data, success } = editSaleItemsSchema.safeParse(req.body);
     if (!success) {

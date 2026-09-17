@@ -1,4 +1,5 @@
 import z from "zod";
+import { PaymentMethod } from "../../generated/prisma/enums";
 
 export const customerSchema = z.object({
   name: z.string().toLowerCase(),
@@ -11,5 +12,12 @@ export const updateSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
+export const customerPaymentSchema = z.object({
+  amount: z.number(),
+  customerId: z.uuid(),
+  method: z.enum(PaymentMethod),
+});
+
 export type CustomerInput = z.infer<typeof customerSchema>;
 export type CustomerUpdateInput = z.infer<typeof updateSchema>;
+export type CustomerPaymentInput = z.infer<typeof customerPaymentSchema>;

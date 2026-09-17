@@ -16,6 +16,7 @@ import { Input } from "@/app/components/ui/input";
 import { Modal } from "@/app/components/ui/modal";
 import { Badge } from "@/app/components/ui/badge";
 import { Table, THead, TBody, TR, TH, TD } from "@/app/components/ui/table";
+import { formatCurrency } from "@/lib/utils/format";
 
 type CustomerFormModalProps = {
   open: boolean;
@@ -97,7 +98,7 @@ export function CustomersTable({ customers }: { customers: Customer[] }) {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Customers</h1>
-          <p className="text-muted">{customers.length} customers</p>
+          <p className="text-muted-foreground">{customers.length} customers</p>
         </div>
         <Button
           onClick={() => {
@@ -113,6 +114,7 @@ export function CustomersTable({ customers }: { customers: Customer[] }) {
         <THead>
           <TR>
             <TH>Name</TH>
+            <TH>Total Owed</TH>
             <TH>Phone</TH>
             <TH>Status</TH>
             <TH />
@@ -128,6 +130,9 @@ export function CustomersTable({ customers }: { customers: Customer[] }) {
                 >
                   {customer.name}
                 </Link>
+              </TD>
+              <TD className="text-red-500">
+                {formatCurrency(customer.totalOwed)}
               </TD>
               <TD>{customer.phone ?? "—"}</TD>
               <TD>

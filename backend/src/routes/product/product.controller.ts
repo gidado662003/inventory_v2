@@ -19,7 +19,7 @@ const productController = {
   }),
 
   getProducts: catchAsync(async (req, res) => {
-    const response = await productService.getProduct();
+    const response = await productService.getProduct(req.query.name as string);
     res.status(200).json({ success: true, response });
   }),
   getProductById: catchAsync(async (req: Request, res: Response) => {

@@ -6,6 +6,7 @@ import {
   saleSchema,
   salesListResponseSchema,
   salesSummarySchema,
+  salesItemListResponseSchema,
 } from "./schema";
 function buildQueryString(query: SalesListQuery): string {
   const params = new URLSearchParams();
@@ -26,6 +27,20 @@ export async function getSales(query: SalesListQuery = { page: 1, limit: 20 }) {
     },
   });
   return salesListResponseSchema.parse(data);
+}
+
+export async function getSalesItems(
+  query: SalesListQuery = { page: 1, limit: 20 },
+) {
+  const data = await serverGet<unknown>(
+    `sales/items${buildQueryString(query)}`,
+    {
+      next: {
+        tags: ["salesItems"],
+      },
+    },
+  );
+  return salesItemListResponseSchema.parse(data);
 }
 
 export async function getSale(id: string) {

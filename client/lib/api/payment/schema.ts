@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { dateTimeSchema, decimalSchema, paginationSchema } from "@/lib/api/shared";
+import {
+  dateTimeSchema,
+  decimalSchema,
+  paginationSchema,
+} from "@/lib/api/shared";
 import { paymentMethodSchema } from "@/lib/api/sales/schema";
 
 export const paymentSchema = z.object({
@@ -28,6 +32,12 @@ export const paymentSchema = z.object({
 
 export const createPaymentSchema = z.object({
   saleId: z.string().uuid("Sale is required"),
+  amount: z.number().positive("Amount must be positive"),
+  method: paymentMethodSchema,
+});
+
+export const createCustomerPaymentSchema = z.object({
+  customerId: z.string().uuid("Customer is required"),
   amount: z.number().positive("Amount must be positive"),
   method: paymentMethodSchema,
 });

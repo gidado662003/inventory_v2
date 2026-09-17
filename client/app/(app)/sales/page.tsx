@@ -1,5 +1,9 @@
 import { Suspense } from "react";
-import { getSales, getSalesSummary } from "@/lib/api/sales/server";
+import {
+  getSales,
+  getSalesSummary,
+  getSalesItems,
+} from "@/lib/api/sales/server";
 import { SalesListView } from "@/app/components/sales/sales-list-view";
 import type { SalesListQuery } from "@/lib/api/sales/schema";
 
@@ -21,11 +25,12 @@ export default async function SalesPage({
   };
 
   const data = await getSales(query);
-  const summary = await getSalesSummary();
+  const salesItem = await getSalesItems(query);
+  const summary = await getSalesSummary(query.startDate);
 
   return (
     <Suspense fallback={<p className="text-muted">Loading filters...</p>}>
-      <SalesListView data={data} summary={summary} />
+      <SalesListView data={data} summary={summary} salesItems={salesItem} />
     </Suspense>
   );
 }
