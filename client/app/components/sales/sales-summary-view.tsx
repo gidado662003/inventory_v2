@@ -40,8 +40,10 @@ function StatBlock({
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {label}
         </p>
+
         {icon && <span className="text-muted-foreground/70">{icon}</span>}
       </div>
+
       <p
         className={cn(
           "mt-1.5 text-2xl font-semibold tabular-nums leading-none",
@@ -50,6 +52,7 @@ function StatBlock({
       >
         {value}
       </p>
+
       {sub && <p className="mt-1.5 text-xs text-muted-foreground">{sub}</p>}
     </div>
   );
@@ -72,9 +75,12 @@ function MethodRow({
     <div className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
       <div className="flex items-center gap-2.5">
         <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", dotColor)} />
+
         <span className="text-sm font-medium text-foreground">{label}</span>
+
         <span className="text-xs text-muted-foreground">({count})</span>
       </div>
+
       <span className="text-sm font-semibold tabular-nums text-foreground">
         {formatCurrency(amount)}
       </span>
@@ -92,6 +98,7 @@ function CreditPaymentItem({
   method: "CASH" | "TRANSFER";
 }) {
   const isCash = method === "CASH";
+
   return (
     <div
       className={cn(
@@ -104,6 +111,7 @@ function CreditPaymentItem({
         <span className="text-sm font-medium text-foreground">
           {customerName}
         </span>
+
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <span
             className={cn(
@@ -111,9 +119,11 @@ function CreditPaymentItem({
               isCash ? "bg-emerald-500" : "bg-sky-500",
             )}
           />
+
           {isCash ? "Cash" : "Transfer"}
         </span>
       </div>
+
       <span className="text-sm font-semibold tabular-nums text-foreground">
         {formatCurrency(amount)}
       </span>
@@ -137,14 +147,17 @@ function ProductRow({
     "bg-orange-500",
     "bg-teal-500",
   ];
+
   const color = colors[index % colors.length];
 
   return (
     <div className="flex items-center justify-between py-2 first:pt-0 last:pb-0">
       <div className="flex min-w-0 items-center gap-2.5">
         <span className={cn("h-2 w-2 shrink-0 rounded-full", color)} />
+
         <span className="truncate text-sm text-foreground">{name}</span>
       </div>
+
       <span className="shrink-0 text-sm font-medium tabular-nums text-muted-foreground">
         {quantity} unit{quantity !== 1 ? "s" : ""}
       </span>
@@ -177,7 +190,9 @@ function SectionHeading({
 
 function getDisplayDate(dateString: string): string {
   const [y, m, d] = dateString.split("-").map(Number);
+
   const localDate = new Date(y, (m ?? 1) - 1, d ?? 1);
+
   return format(addDays(localDate, 1), "MMM d, yyyy");
 }
 
@@ -193,23 +208,42 @@ function SalesSummary({
   if (!data) return null;
 
   const { sales, paymentsReceivedToday, totalProduct } = data;
+
   const hasCustomerPayments = paymentsReceivedToday.length > 0;
+
   const hasProducts = totalProduct.length > 0;
+
   const totalPaymentCount =
     sales.byPaymentMethod.CASH.count + sales.byPaymentMethod.TRANSFER.count;
-  const totalUnits = totalProduct.reduce((sum, p) => sum + p.totalQuantity, 0);
+
+  const totalUnits = totalProduct.reduce(
+    (sum, product) => sum + product.totalQuantity,
+    0,
+  );
+
   const displayDate = getDisplayDate(data.date);
 
-  // Calculate totals
+  // These are payments made directly against today's sales.
+  // Credit-payment transactions are intentionally excluded.
   const totalCashAmount = sales.byPaymentMethod.CASH.amount;
+
   const totalTransferAmount = sales.byPaymentMethod.TRANSFER.amount;
+
   const totalPaidToday = totalCashAmount + totalTransferAmount;
+
+  // Count actual credit-payment transactions, not Payment
+  // allocation rows. One transaction may allocate to multiple sales.
+  const totalCreditPaymentTransactions = paymentsReceivedToday.reduce(
+    (total, customer) => total + customer.transactions.length,
+    0,
+  );
 
   return (
     <Modal
       title={
         <div className="flex items-baseline gap-2">
           <span>Sales Summary</span>
+
           <span className="text-sm font-normal text-muted-foreground">
             {displayDate}
           </span>
@@ -229,12 +263,14 @@ function SalesSummary({
             sub={`${sales.count} transactions`}
             icon={<TrendingUp className="h-4 w-4" />}
           />
+
           <StatBlock
             label="Paid Today"
             value={formatCurrency(totalPaidToday)}
             sub={`${totalPaymentCount} payments`}
             icon={<CreditCard className="h-4 w-4" />}
           />
+
           <StatBlock
             label="Outstanding"
             value={formatCurrency(sales.outstandingBalance)}
@@ -252,10 +288,11 @@ function SalesSummary({
               )
             }
           />
+
           <StatBlock
-            label="Customers"
+            label="Credit Payers"
             value={String(paymentsReceivedToday.length)}
-            sub={`${totalUnits} units sold`}
+            sub={`${totalCreditPaymentTransactions} repayments`}
             icon={<Users className="h-4 w-4" />}
           />
         </div>
@@ -267,6 +304,7 @@ function SalesSummary({
             <SectionHeading icon={<Wallet className="h-3.5 w-3.5" />}>
               Payment Methods
             </SectionHeading>
+
             <div className="rounded-xl border border-border bg-background px-4 py-1">
               <div className="divide-y divide-border/60">
                 <MethodRow
@@ -275,6 +313,7 @@ function SalesSummary({
                   count={sales.byPaymentMethod.CASH.count}
                   color="emerald"
                 />
+
                 <MethodRow
                   label="Transfer"
                   amount={sales.byPaymentMethod.TRANSFER.amount}
@@ -288,15 +327,16 @@ function SalesSummary({
           {/* Credit Payments */}
           <section>
             <SectionHeading>Credit Payments</SectionHeading>
+
             {hasCustomerPayments ? (
               <div className="max-h-48 overflow-y-auto rounded-xl border border-border scrollbar-thin scrollbar-thumb-muted-foreground/20">
                 {paymentsReceivedToday.flatMap((customer) =>
-                  customer.payments.map((payment) => (
+                  customer.transactions.map((transaction) => (
                     <CreditPaymentItem
-                      key={payment.paymentId}
+                      key={transaction.transactionId}
                       customerName={customer.customerName}
-                      amount={payment.amount}
-                      method={payment.method}
+                      amount={transaction.amount}
+                      method={transaction.method}
                     />
                   )),
                 )}
@@ -311,6 +351,7 @@ function SalesSummary({
             <SectionHeading icon={<Package className="h-3.5 w-3.5" />}>
               Products Sold
             </SectionHeading>
+
             {hasProducts ? (
               <div className="rounded-xl border border-border bg-background px-4 py-3">
                 <div className="max-h-32 divide-y divide-border/60 overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20">
@@ -323,8 +364,10 @@ function SalesSummary({
                     />
                   ))}
                 </div>
+
                 <div className="mt-2 flex items-center justify-between border-t border-border/60 pt-2 text-xs text-muted-foreground">
                   <span>Total units</span>
+
                   <span className="font-medium tabular-nums">{totalUnits}</span>
                 </div>
               </div>

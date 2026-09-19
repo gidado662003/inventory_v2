@@ -121,6 +121,14 @@ const customerService = {
     }
 
     return await prisma.$transaction(async (tx) => {
+      const paymentTransacton = await tx.paymentTransaction.create({
+        data: {
+          amount: data.amount,
+          customerId: data.customerId,
+          method: data.method,
+          recordedById: recordedBy,
+        },
+      });
       const customerCreditSales = await tx.sale.findMany({
         where: {
           customerId: data.customerId,
@@ -185,6 +193,7 @@ const customerService = {
           method: data.method,
           saleId: sale.id,
           recordedById: recordedBy,
+          transactionId: paymentTransacton.id,
         });
 
         // Balance remaining on this sale after this payment

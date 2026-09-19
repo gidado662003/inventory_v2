@@ -87,6 +87,11 @@ export type SaleEditLog = Prisma.SaleEditLogModel
  */
 export type Payment = Prisma.PaymentModel
 /**
+ * Model PaymentTransaction
+ * 
+ */
+export type PaymentTransaction = Prisma.PaymentTransactionModel
+/**
  * Model InventoryMovement
  * 
  */

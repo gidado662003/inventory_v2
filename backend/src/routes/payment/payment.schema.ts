@@ -9,6 +9,7 @@ const paymentBaseSchema = z.object({
 export const paymentSchema = paymentBaseSchema.extend({
   saleId: z.uuid(),
   recordedById: z.uuid(),
+  transactionId: z.uuid().optional(),
 });
 
 export const paymentWithSaleSchema = paymentBaseSchema.extend({

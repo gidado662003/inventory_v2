@@ -329,92 +329,153 @@ export const salesService = {
 
   getSalesSummary: async (query: GetSalesSummaryQuery) => {
     const targetDate = query.date ? new Date(query.date) : new Date();
+
     const start = startOfDay(targetDate);
     const end = endOfDay(targetDate);
+
+    // --------------------------------------------------
+    // 1. TOTAL PRODUCTS SOLD TODAY
+    // --------------------------------------------------
     const totalProduct = await movementService.getMovementTotals({
       type: "SALE",
       startDate: start,
       endDate: end,
     });
+
+    // --------------------------------------------------
+    // 2. SALES CREATED TODAY
+    // --------------------------------------------------
     const todaysSales = await prisma.sale.findMany({
       where: {
-        saleDate: { gte: start, lte: end },
+        saleDate: {
+          gte: start,
+          lte: end,
+        },
       },
-      select: { id: true, totalAmount: true },
+      select: {
+        id: true,
+        totalAmount: true,
+      },
     });
 
     const salesCount = todaysSales.length;
+
     const salesTotalAmount = todaysSales.reduce(
-      (sum, s) => sum + Number(s.totalAmount),
+      (sum, sale) => sum + Number(sale.totalAmount),
       0,
     );
-    const todaysSaleIds = todaysSales.map((s) => s.id);
 
+    const todaysSaleIds = todaysSales.map((sale) => sale.id);
+
+    // --------------------------------------------------
+    // 3. PAYMENTS MADE DIRECTLY AGAINST TODAY'S SALES
+    //
+    // transactionId = null means this is a direct
+    // sale payment and should count toward today's
+    // sales payment total.
+    // --------------------------------------------------
     const paymentsForTodaysSales = todaysSaleIds.length
       ? await prisma.payment.groupBy({
           by: ["method"],
-          where: { saleId: { in: todaysSaleIds } },
-          _sum: { amount: true },
-          _count: { _all: true },
+          where: {
+            saleId: {
+              in: todaysSaleIds,
+            },
+            transactionId: null,
+          },
+          _sum: {
+            amount: true,
+          },
+          _count: {
+            _all: true,
+          },
         })
       : [];
 
     const salesByMethod = buildMethodBreakdown(paymentsForTodaysSales);
+
     const paidAgainstTodaysSales = paymentsForTodaysSales.reduce(
-      (sum, p) => sum + Number(p._sum.amount ?? 0),
+      (sum, payment) => sum + Number(payment._sum.amount ?? 0),
       0,
     );
+
+    // --------------------------------------------------
+    // 4. OUTSTANDING BALANCE FROM TODAY'S SALES
+    //
+    // Only direct payments against today's sales are
+    // considered here.
+    //
+    // Credit repayments through PaymentTransaction
+    // do NOT reduce this figure.
+    // --------------------------------------------------
     const outstandingBalance = salesTotalAmount - paidAgainstTodaysSales;
 
-    const customerPaymentsToday = await prisma.payment.findMany({
+    // --------------------------------------------------
+    // 5. CREDIT PAYMENTS RECEIVED TODAY
+    //
+    // PaymentTransaction represents an actual payment
+    // made toward an existing customer credit balance.
+    //
+    // These payments are intentionally kept separate
+    // from today's sales payments.
+    // --------------------------------------------------
+    const customerPaymentsToday = await prisma.paymentTransaction.findMany({
       where: {
-        paymentDate: { gte: start, lte: end },
-        sale: { customerId: { not: null } },
+        createdAt: {
+          gte: start,
+          lte: end,
+        },
       },
       select: {
         id: true,
         amount: true,
         method: true,
-        saleId: true,
-        sale: {
+        customerId: true,
+        customer: {
           select: {
-            customer: { select: { id: true, name: true } },
+            id: true,
+            name: true,
           },
         },
       },
-      orderBy: { paymentDate: "asc" },
+      orderBy: {
+        createdAt: "asc",
+      },
     });
 
+    // --------------------------------------------------
+    // 6. GROUP CREDIT PAYMENTS BY CUSTOMER
+    // --------------------------------------------------
     const byCustomerMap = new Map<
       string,
       {
         customerId: string;
         customerName: string;
         totalAmount: number;
-        payments: {
-          paymentId: string;
-          saleId: string;
+        transactions: {
+          transactionId: string;
           amount: number;
           method: PaymentMethod;
         }[];
       }
     >();
 
-    for (const payment of customerPaymentsToday) {
-      const customer = payment.sale.customer!;
+    for (const transaction of customerPaymentsToday) {
+      const customer = transaction.customer;
+
       const entry = byCustomerMap.get(customer.id) ?? {
         customerId: customer.id,
         customerName: customer.name,
         totalAmount: 0,
-        payments: [],
+        transactions: [],
       };
 
-      entry.totalAmount += Number(payment.amount);
-      entry.payments.push({
-        paymentId: payment.id,
-        saleId: payment.saleId,
-        amount: Number(payment.amount),
-        method: payment.method,
+      entry.totalAmount += Number(transaction.amount);
+
+      entry.transactions.push({
+        transactionId: transaction.id,
+        amount: Number(transaction.amount),
+        method: transaction.method,
       });
 
       byCustomerMap.set(customer.id, entry);
@@ -422,15 +483,23 @@ export const salesService = {
 
     const paymentsReceivedToday = Array.from(byCustomerMap.values());
 
+    // --------------------------------------------------
+    // 7. RETURN SUMMARY
+    // --------------------------------------------------
     return {
       date: start.toISOString().slice(0, 10),
+
       sales: {
         count: salesCount,
         totalAmount: salesTotalAmount,
         byPaymentMethod: salesByMethod,
         outstandingBalance,
       },
+
+      // These are ONLY credit repayments made today.
+      // They are NOT included in sales.byPaymentMethod.
       paymentsReceivedToday,
+
       totalProduct,
     };
   },

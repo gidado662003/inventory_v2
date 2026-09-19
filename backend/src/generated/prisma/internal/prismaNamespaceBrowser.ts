@@ -60,6 +60,7 @@ export const ModelName = {
   SaleItem: 'SaleItem',
   SaleEditLog: 'SaleEditLog',
   Payment: 'Payment',
+  PaymentTransaction: 'PaymentTransaction',
   InventoryMovement: 'InventoryMovement'
 } as const
 
@@ -185,10 +186,23 @@ export const PaymentScalarFieldEnum = {
   amount: 'amount',
   method: 'method',
   paymentDate: 'paymentDate',
-  createdAt: 'createdAt'
+  createdAt: 'createdAt',
+  transactionId: 'transactionId'
 } as const
 
 export type PaymentScalarFieldEnum = (typeof PaymentScalarFieldEnum)[keyof typeof PaymentScalarFieldEnum]
+
+
+export const PaymentTransactionScalarFieldEnum = {
+  id: 'id',
+  customerId: 'customerId',
+  amount: 'amount',
+  method: 'method',
+  recordedById: 'recordedById',
+  createdAt: 'createdAt'
+} as const
+
+export type PaymentTransactionScalarFieldEnum = (typeof PaymentTransactionScalarFieldEnum)[keyof typeof PaymentTransactionScalarFieldEnum]
 
 
 export const InventoryMovementScalarFieldEnum = {

@@ -127,11 +127,17 @@ export const salesSummaryCustomerPaymentSchema = z.object({
   method: z.enum(["CASH", "TRANSFER"]),
 });
 
+export const salesSummaryCustomerTransactionSchema = z.object({
+  transactionId: z.string(),
+  amount: z.number(),
+  method: z.enum(["CASH", "TRANSFER"]),
+});
+
 export const salesSummaryByCustomerSchema = z.object({
   customerId: z.string(),
   customerName: z.string(),
   totalAmount: z.number(),
-  payments: z.array(salesSummaryCustomerPaymentSchema),
+  transactions: z.array(salesSummaryCustomerTransactionSchema),
 });
 
 export const salesProductPerDateSchema = z.object({

@@ -190,6 +190,7 @@ export type CustomerWhereInput = {
   isActive?: Prisma.BoolFilter<"Customer"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Customer"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Customer"> | Date | string
+  paymentTransactions?: Prisma.PaymentTransactionListRelationFilter
   sales?: Prisma.SaleListRelationFilter
 }
 
@@ -200,6 +201,7 @@ export type CustomerOrderByWithRelationInput = {
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  paymentTransactions?: Prisma.PaymentTransactionOrderByRelationAggregateInput
   sales?: Prisma.SaleOrderByRelationAggregateInput
 }
 
@@ -213,6 +215,7 @@ export type CustomerWhereUniqueInput = Prisma.AtLeast<{
   isActive?: Prisma.BoolFilter<"Customer"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Customer"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Customer"> | Date | string
+  paymentTransactions?: Prisma.PaymentTransactionListRelationFilter
   sales?: Prisma.SaleListRelationFilter
 }, "id">
 
@@ -247,6 +250,7 @@ export type CustomerCreateInput = {
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  paymentTransactions?: Prisma.PaymentTransactionCreateNestedManyWithoutCustomerInput
   sales?: Prisma.SaleCreateNestedManyWithoutCustomerInput
 }
 
@@ -257,6 +261,7 @@ export type CustomerUncheckedCreateInput = {
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  paymentTransactions?: Prisma.PaymentTransactionUncheckedCreateNestedManyWithoutCustomerInput
   sales?: Prisma.SaleUncheckedCreateNestedManyWithoutCustomerInput
 }
 
@@ -267,6 +272,7 @@ export type CustomerUpdateInput = {
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paymentTransactions?: Prisma.PaymentTransactionUpdateManyWithoutCustomerNestedInput
   sales?: Prisma.SaleUpdateManyWithoutCustomerNestedInput
 }
 
@@ -277,6 +283,7 @@ export type CustomerUncheckedUpdateInput = {
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paymentTransactions?: Prisma.PaymentTransactionUncheckedUpdateManyWithoutCustomerNestedInput
   sales?: Prisma.SaleUncheckedUpdateManyWithoutCustomerNestedInput
 }
 
@@ -339,6 +346,11 @@ export type CustomerNullableScalarRelationFilter = {
   isNot?: Prisma.CustomerWhereInput | null
 }
 
+export type CustomerScalarRelationFilter = {
+  is?: Prisma.CustomerWhereInput
+  isNot?: Prisma.CustomerWhereInput
+}
+
 export type NullableStringFieldUpdateOperationsInput = {
   set?: string | null
 }
@@ -359,6 +371,20 @@ export type CustomerUpdateOneWithoutSalesNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.CustomerUpdateToOneWithWhereWithoutSalesInput, Prisma.CustomerUpdateWithoutSalesInput>, Prisma.CustomerUncheckedUpdateWithoutSalesInput>
 }
 
+export type CustomerCreateNestedOneWithoutPaymentTransactionsInput = {
+  create?: Prisma.XOR<Prisma.CustomerCreateWithoutPaymentTransactionsInput, Prisma.CustomerUncheckedCreateWithoutPaymentTransactionsInput>
+  connectOrCreate?: Prisma.CustomerCreateOrConnectWithoutPaymentTransactionsInput
+  connect?: Prisma.CustomerWhereUniqueInput
+}
+
+export type CustomerUpdateOneRequiredWithoutPaymentTransactionsNestedInput = {
+  create?: Prisma.XOR<Prisma.CustomerCreateWithoutPaymentTransactionsInput, Prisma.CustomerUncheckedCreateWithoutPaymentTransactionsInput>
+  connectOrCreate?: Prisma.CustomerCreateOrConnectWithoutPaymentTransactionsInput
+  upsert?: Prisma.CustomerUpsertWithoutPaymentTransactionsInput
+  connect?: Prisma.CustomerWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.CustomerUpdateToOneWithWhereWithoutPaymentTransactionsInput, Prisma.CustomerUpdateWithoutPaymentTransactionsInput>, Prisma.CustomerUncheckedUpdateWithoutPaymentTransactionsInput>
+}
+
 export type CustomerCreateWithoutSalesInput = {
   id?: string
   name: string
@@ -366,6 +392,7 @@ export type CustomerCreateWithoutSalesInput = {
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  paymentTransactions?: Prisma.PaymentTransactionCreateNestedManyWithoutCustomerInput
 }
 
 export type CustomerUncheckedCreateWithoutSalesInput = {
@@ -375,6 +402,7 @@ export type CustomerUncheckedCreateWithoutSalesInput = {
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  paymentTransactions?: Prisma.PaymentTransactionUncheckedCreateNestedManyWithoutCustomerInput
 }
 
 export type CustomerCreateOrConnectWithoutSalesInput = {
@@ -400,6 +428,7 @@ export type CustomerUpdateWithoutSalesInput = {
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paymentTransactions?: Prisma.PaymentTransactionUpdateManyWithoutCustomerNestedInput
 }
 
 export type CustomerUncheckedUpdateWithoutSalesInput = {
@@ -409,6 +438,63 @@ export type CustomerUncheckedUpdateWithoutSalesInput = {
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paymentTransactions?: Prisma.PaymentTransactionUncheckedUpdateManyWithoutCustomerNestedInput
+}
+
+export type CustomerCreateWithoutPaymentTransactionsInput = {
+  id?: string
+  name: string
+  phone?: string | null
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  sales?: Prisma.SaleCreateNestedManyWithoutCustomerInput
+}
+
+export type CustomerUncheckedCreateWithoutPaymentTransactionsInput = {
+  id?: string
+  name: string
+  phone?: string | null
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  sales?: Prisma.SaleUncheckedCreateNestedManyWithoutCustomerInput
+}
+
+export type CustomerCreateOrConnectWithoutPaymentTransactionsInput = {
+  where: Prisma.CustomerWhereUniqueInput
+  create: Prisma.XOR<Prisma.CustomerCreateWithoutPaymentTransactionsInput, Prisma.CustomerUncheckedCreateWithoutPaymentTransactionsInput>
+}
+
+export type CustomerUpsertWithoutPaymentTransactionsInput = {
+  update: Prisma.XOR<Prisma.CustomerUpdateWithoutPaymentTransactionsInput, Prisma.CustomerUncheckedUpdateWithoutPaymentTransactionsInput>
+  create: Prisma.XOR<Prisma.CustomerCreateWithoutPaymentTransactionsInput, Prisma.CustomerUncheckedCreateWithoutPaymentTransactionsInput>
+  where?: Prisma.CustomerWhereInput
+}
+
+export type CustomerUpdateToOneWithWhereWithoutPaymentTransactionsInput = {
+  where?: Prisma.CustomerWhereInput
+  data: Prisma.XOR<Prisma.CustomerUpdateWithoutPaymentTransactionsInput, Prisma.CustomerUncheckedUpdateWithoutPaymentTransactionsInput>
+}
+
+export type CustomerUpdateWithoutPaymentTransactionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sales?: Prisma.SaleUpdateManyWithoutCustomerNestedInput
+}
+
+export type CustomerUncheckedUpdateWithoutPaymentTransactionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sales?: Prisma.SaleUncheckedUpdateManyWithoutCustomerNestedInput
 }
 
 
@@ -417,10 +503,12 @@ export type CustomerUncheckedUpdateWithoutSalesInput = {
  */
 
 export type CustomerCountOutputType = {
+  paymentTransactions: number
   sales: number
 }
 
 export type CustomerCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  paymentTransactions?: boolean | CustomerCountOutputTypeCountPaymentTransactionsArgs
   sales?: boolean | CustomerCountOutputTypeCountSalesArgs
 }
 
@@ -432,6 +520,13 @@ export type CustomerCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Ext
    * Select specific fields to fetch from the CustomerCountOutputType
    */
   select?: Prisma.CustomerCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * CustomerCountOutputType without action
+ */
+export type CustomerCountOutputTypeCountPaymentTransactionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.PaymentTransactionWhereInput
 }
 
 /**
@@ -449,6 +544,7 @@ export type CustomerSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  paymentTransactions?: boolean | Prisma.Customer$paymentTransactionsArgs<ExtArgs>
   sales?: boolean | Prisma.Customer$salesArgs<ExtArgs>
   _count?: boolean | Prisma.CustomerCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["customer"]>
@@ -482,6 +578,7 @@ export type CustomerSelectScalar = {
 
 export type CustomerOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "phone" | "isActive" | "createdAt" | "updatedAt", ExtArgs["result"]["customer"]>
 export type CustomerInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  paymentTransactions?: boolean | Prisma.Customer$paymentTransactionsArgs<ExtArgs>
   sales?: boolean | Prisma.Customer$salesArgs<ExtArgs>
   _count?: boolean | Prisma.CustomerCountOutputTypeDefaultArgs<ExtArgs>
 }
@@ -491,6 +588,7 @@ export type CustomerIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Ext
 export type $CustomerPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Customer"
   objects: {
+    paymentTransactions: Prisma.$PaymentTransactionPayload<ExtArgs>[]
     sales: Prisma.$SalePayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
@@ -894,6 +992,7 @@ readonly fields: CustomerFieldRefs;
  */
 export interface Prisma__CustomerClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  paymentTransactions<T extends Prisma.Customer$paymentTransactionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Customer$paymentTransactionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PaymentTransactionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   sales<T extends Prisma.Customer$salesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Customer$salesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SalePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -1320,6 +1419,30 @@ export type CustomerDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Inte
    * Limit how many Customers to delete.
    */
   limit?: number
+}
+
+/**
+ * Customer.paymentTransactions
+ */
+export type Customer$paymentTransactionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the PaymentTransaction
+   */
+  select?: Prisma.PaymentTransactionSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the PaymentTransaction
+   */
+  omit?: Prisma.PaymentTransactionOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PaymentTransactionInclude<ExtArgs> | null
+  where?: Prisma.PaymentTransactionWhereInput
+  orderBy?: Prisma.PaymentTransactionOrderByWithRelationInput | Prisma.PaymentTransactionOrderByWithRelationInput[]
+  cursor?: Prisma.PaymentTransactionWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.PaymentTransactionScalarFieldEnum | Prisma.PaymentTransactionScalarFieldEnum[]
 }
 
 /**
