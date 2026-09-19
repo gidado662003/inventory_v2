@@ -127,7 +127,7 @@ export function CreateSalePage() {
 
     const parsed = createSaleSchema.safeParse(data);
     if (!parsed.success) return;
-
+    setConfirm(false);
     createSale.mutate(parsed.data, {
       onSuccess: () => router.push("/sales"),
     });
@@ -450,6 +450,7 @@ export function CreateSalePage() {
 
       <ConfirmationModal
         isOpen={confirm}
+        isLoading={createSale.isPending}
         onClose={() => setConfirm(false)}
         onConfirm={submit}
         title="Confirm Sale"

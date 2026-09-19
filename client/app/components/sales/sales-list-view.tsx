@@ -466,7 +466,7 @@ export function SalesListView({
   const searchParams = useSearchParams();
 
   const page = Number(searchParams.get("page") ?? "1");
-  const view = searchParams.get("view") ?? "items";
+  const view = searchParams.get("view") ?? "sales";
 
   const [salesSummaryModal, setSalesSummaryModal] = useState(false);
 
