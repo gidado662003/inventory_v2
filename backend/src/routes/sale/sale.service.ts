@@ -333,18 +333,12 @@ export const salesService = {
     const start = startOfDay(targetDate);
     const end = endOfDay(targetDate);
 
-    // --------------------------------------------------
-    // 1. TOTAL PRODUCTS SOLD TODAY
-    // --------------------------------------------------
     const totalProduct = await movementService.getMovementTotals({
       type: "SALE",
       startDate: start,
       endDate: end,
     });
 
-    // --------------------------------------------------
-    // 2. SALES CREATED TODAY
-    // --------------------------------------------------
     const todaysSales = await prisma.sale.findMany({
       where: {
         saleDate: {
@@ -367,14 +361,7 @@ export const salesService = {
 
     const todaysSaleIds = todaysSales.map((sale) => sale.id);
 
-    // --------------------------------------------------
-    // 3. PAYMENTS MADE DIRECTLY AGAINST TODAY'S SALES
-    //
-    // transactionId = null means this is a direct
-    // sale payment and should count toward today's
-    // sales payment total.
-    // --------------------------------------------------
-    const paymentsForTodaysSales = todaysSaleIds.length
+    const directPaymentsToday = todaysSaleIds.length
       ? await prisma.payment.groupBy({
           by: ["method"],
           where: {
@@ -392,33 +379,6 @@ export const salesService = {
         })
       : [];
 
-    const salesByMethod = buildMethodBreakdown(paymentsForTodaysSales);
-
-    const paidAgainstTodaysSales = paymentsForTodaysSales.reduce(
-      (sum, payment) => sum + Number(payment._sum.amount ?? 0),
-      0,
-    );
-
-    // --------------------------------------------------
-    // 4. OUTSTANDING BALANCE FROM TODAY'S SALES
-    //
-    // Only direct payments against today's sales are
-    // considered here.
-    //
-    // Credit repayments through PaymentTransaction
-    // do NOT reduce this figure.
-    // --------------------------------------------------
-    const outstandingBalance = salesTotalAmount - paidAgainstTodaysSales;
-
-    // --------------------------------------------------
-    // 5. CREDIT PAYMENTS RECEIVED TODAY
-    //
-    // PaymentTransaction represents an actual payment
-    // made toward an existing customer credit balance.
-    //
-    // These payments are intentionally kept separate
-    // from today's sales payments.
-    // --------------------------------------------------
     const customerPaymentsToday = await prisma.paymentTransaction.findMany({
       where: {
         createdAt: {
@@ -443,9 +403,75 @@ export const salesService = {
       },
     });
 
-    // --------------------------------------------------
-    // 6. GROUP CREDIT PAYMENTS BY CUSTOMER
-    // --------------------------------------------------
+    const paymentMethodTotals = new Map<
+      PaymentMethod,
+      {
+        amount: number;
+        count: number;
+      }
+    >();
+
+    for (const payment of directPaymentsToday) {
+      const method = payment.method;
+
+      const current = paymentMethodTotals.get(method) ?? {
+        amount: 0,
+        count: 0,
+      };
+
+      paymentMethodTotals.set(method, {
+        amount: current.amount + Number(payment._sum.amount ?? 0),
+        count: current.count + payment._count._all,
+      });
+    }
+
+    for (const transaction of customerPaymentsToday) {
+      const method = transaction.method;
+
+      const current = paymentMethodTotals.get(method) ?? {
+        amount: 0,
+        count: 0,
+      };
+
+      paymentMethodTotals.set(method, {
+        amount: current.amount + Number(transaction.amount),
+        count: current.count + 1,
+      });
+    }
+
+    const salesByMethod = {
+      CASH: paymentMethodTotals.get("CASH") ?? {
+        amount: 0,
+        count: 0,
+      },
+      TRANSFER: paymentMethodTotals.get("TRANSFER") ?? {
+        amount: 0,
+        count: 0,
+      },
+    };
+
+    const paymentsAppliedToTodaysSales = todaysSaleIds.length
+      ? await prisma.payment.aggregate({
+          where: {
+            saleId: {
+              in: todaysSaleIds,
+            },
+          },
+          _sum: {
+            amount: true,
+          },
+        })
+      : null;
+
+    const paidAgainstTodaysSales = Number(
+      paymentsAppliedToTodaysSales?._sum.amount ?? 0,
+    );
+
+    const outstandingBalance = Math.max(
+      0,
+      salesTotalAmount - paidAgainstTodaysSales,
+    );
+
     const byCustomerMap = new Map<
       string,
       {
@@ -483,9 +509,6 @@ export const salesService = {
 
     const paymentsReceivedToday = Array.from(byCustomerMap.values());
 
-    // --------------------------------------------------
-    // 7. RETURN SUMMARY
-    // --------------------------------------------------
     return {
       date: start.toISOString().slice(0, 10),
 
@@ -496,8 +519,6 @@ export const salesService = {
         outstandingBalance,
       },
 
-      // These are ONLY credit repayments made today.
-      // They are NOT included in sales.byPaymentMethod.
       paymentsReceivedToday,
 
       totalProduct,
