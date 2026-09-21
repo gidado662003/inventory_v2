@@ -115,28 +115,34 @@ export const createSaleResponseSchema = z.object({
   payments: z.array(salePaymentSchema),
 });
 
+// ─────────────────────────────────────────────
+// SALES SUMMARY
+// ─────────────────────────────────────────────
+
 export const paymentMethodBreakdownSchema = z.object({
   amount: z.number(),
   count: z.number(),
 });
 
-export const salesSummaryCustomerPaymentSchema = z.object({
-  paymentId: z.string(),
-  saleId: z.string(),
-  amount: z.number(),
-  method: z.enum(["CASH", "TRANSFER"]),
+export const cashSplitSchema = z.object({
+  fromTodaysSales: z.number(),
+  fromOlderBalances: z.number(),
 });
 
 export const salesSummaryCustomerTransactionSchema = z.object({
   transactionId: z.string(),
   amount: z.number(),
-  method: z.enum(["CASH", "TRANSFER"]),
+  method: paymentMethodSchema,
+  appliedToTodaysSales: z.number(),
+  appliedToOlderBalances: z.number(),
 });
 
 export const salesSummaryByCustomerSchema = z.object({
   customerId: z.string(),
   customerName: z.string(),
   totalAmount: z.number(),
+  appliedToTodaysSales: z.number(),
+  appliedToOlderBalances: z.number(),
   transactions: z.array(salesSummaryCustomerTransactionSchema),
 });
 
@@ -148,18 +154,35 @@ export const salesProductPerDateSchema = z.object({
 
 export const salesSummarySchema = z.object({
   date: z.string(),
-  sales: z.object({
-    count: z.number(),
-    totalAmount: z.number(),
-    byPaymentMethod: z.object({
+
+  cashReceived: z.object({
+    total: paymentMethodBreakdownSchema,
+    byMethod: z.object({
       CASH: paymentMethodBreakdownSchema,
       TRANSFER: paymentMethodBreakdownSchema,
     }),
+    fromTodaysSales: paymentMethodBreakdownSchema,
+    fromOlderBalances: paymentMethodBreakdownSchema,
+    splitByMethod: z.object({
+      CASH: cashSplitSchema,
+      TRANSFER: cashSplitSchema,
+    }),
+  }),
+
+  sales: z.object({
+    count: z.number(),
+    totalAmount: z.number(),
+    paidAgainstTodaysSales: z.number(),
     outstandingBalance: z.number(),
   }),
+
   paymentsReceivedToday: z.array(salesSummaryByCustomerSchema),
   totalProduct: z.array(salesProductPerDateSchema),
 });
+
+// ─────────────────────────────────────────────
+// TYPES
+// ─────────────────────────────────────────────
 
 export type SalesSummaryResponse = z.infer<typeof salesSummarySchema>;
 

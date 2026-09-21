@@ -10,8 +10,9 @@ import {
   Clock,
   Wallet,
   CheckCircle2,
-  CreditCard,
+  Banknote,
   Users,
+  History,
 } from "lucide-react";
 import { addDays, format } from "date-fns";
 
@@ -88,16 +89,61 @@ function MethodRow({
   );
 }
 
+function SplitBar({
+  fromTodaysSales,
+  fromOlderBalances,
+}: {
+  fromTodaysSales: number;
+  fromOlderBalances: number;
+}) {
+  const total = fromTodaysSales + fromOlderBalances;
+  if (total === 0) return null;
+
+  const todayPct = (fromTodaysSales / total) * 100;
+  const olderPct = 100 - todayPct;
+
+  return (
+    <div className="mt-3 border-t border-border/60 pt-2.5">
+      <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-muted">
+        {todayPct > 0 && (
+          <div className="bg-sky-500" style={{ width: `${todayPct}%` }} />
+        )}
+
+        {olderPct > 0 && (
+          <div className="bg-amber-500" style={{ width: `${olderPct}%` }} />
+        )}
+      </div>
+
+      <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+          Today {formatCurrency(fromTodaysSales)}
+        </span>
+
+        <span className="flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+          Older {formatCurrency(fromOlderBalances)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function CreditPaymentItem({
   customerName,
   amount,
   method,
+  appliedToTodaysSales,
+  appliedToOlderBalances,
 }: {
   customerName: string;
   amount: number;
   method: "CASH" | "TRANSFER";
+  appliedToTodaysSales: number;
+  appliedToOlderBalances: number;
 }) {
   const isCash = method === "CASH";
+  const hasSplit = appliedToTodaysSales > 0 && appliedToOlderBalances > 0;
 
   return (
     <div
@@ -107,24 +153,42 @@ function CreditPaymentItem({
         "transition-colors hover:bg-muted/30",
       )}
     >
-      <div className="flex flex-col gap-0.5">
-        <span className="text-sm font-medium text-foreground">
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <span className="truncate text-sm font-medium text-foreground">
           {customerName}
         </span>
 
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <span
             className={cn(
-              "h-1.5 w-1.5 rounded-full",
+              "h-1.5 w-1.5 shrink-0 rounded-full",
               isCash ? "bg-emerald-500" : "bg-sky-500",
             )}
           />
 
-          {isCash ? "Cash" : "Transfer"}
+          <span>{isCash ? "Cash" : "Transfer"}</span>
+
+          {hasSplit && (
+            <>
+              <span className="text-muted-foreground/50">·</span>
+
+              <span className="truncate">
+                <span className="text-sky-600 dark:text-sky-400">
+                  {formatCurrency(appliedToTodaysSales)}
+                </span>{" "}
+                today
+                <span className="text-muted-foreground/50"> · </span>
+                <span className="text-amber-600 dark:text-amber-400">
+                  {formatCurrency(appliedToOlderBalances)}
+                </span>{" "}
+                old
+              </span>
+            </>
+          )}
         </span>
       </div>
 
-      <span className="text-sm font-semibold tabular-nums text-foreground">
+      <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
         {formatCurrency(amount)}
       </span>
     </div>
@@ -207,36 +271,28 @@ function SalesSummary({
 }) {
   if (!data) return null;
 
-  const { sales, paymentsReceivedToday, totalProduct } = data;
+  const { cashReceived, sales, paymentsReceivedToday, totalProduct } = data;
 
   const hasCustomerPayments = paymentsReceivedToday.length > 0;
 
   const hasProducts = totalProduct.length > 0;
-
-  const totalPaymentCount =
-    sales.byPaymentMethod.CASH.count + sales.byPaymentMethod.TRANSFER.count;
 
   const totalUnits = totalProduct.reduce(
     (sum, product) => sum + product.totalQuantity,
     0,
   );
 
-  const displayDate = getDisplayDate(data.date);
-
-  // These are payments made directly against today's sales.
-  // Credit-payment transactions are intentionally excluded.
-  const totalCashAmount = sales.byPaymentMethod.CASH.amount;
-
-  const totalTransferAmount = sales.byPaymentMethod.TRANSFER.amount;
-
-  const totalPaidToday = totalCashAmount + totalTransferAmount;
-
-  // Count actual credit-payment transactions, not Payment
-  // allocation rows. One transaction may allocate to multiple sales.
   const totalCreditPaymentTransactions = paymentsReceivedToday.reduce(
     (total, customer) => total + customer.transactions.length,
     0,
   );
+
+  const displayDate = getDisplayDate(data.date);
+
+  const paidPercent =
+    sales.totalAmount > 0
+      ? Math.min(100, (sales.paidAgainstTodaysSales / sales.totalAmount) * 100)
+      : 0;
 
   return (
     <Modal
@@ -258,69 +314,143 @@ function SalesSummary({
         {/* ===== TOP ROW: Key Metrics ===== */}
         <div className="grid grid-cols-4 gap-3">
           <StatBlock
-            label="Total Sales"
-            value={formatCurrency(sales.totalAmount)}
-            sub={`${sales.count} transactions`}
+            label="Cash Received"
+            value={formatCurrency(cashReceived.total.amount)}
+            sub={`${cashReceived.total.count} payment${
+              cashReceived.total.count === 1 ? "" : "s"
+            }`}
+            emphasis="success"
+            icon={<Banknote className="h-4 w-4" />}
+          />
+
+          <StatBlock
+            label="From Today's Sales"
+            value={formatCurrency(cashReceived.fromTodaysSales.amount)}
+            sub={`${cashReceived.fromTodaysSales.count} payment${
+              cashReceived.fromTodaysSales.count === 1 ? "" : "s"
+            }`}
             icon={<TrendingUp className="h-4 w-4" />}
           />
 
           <StatBlock
-            label="Paid Today"
-            value={formatCurrency(totalPaidToday)}
-            sub={`${totalPaymentCount} payments`}
-            icon={<CreditCard className="h-4 w-4" />}
+            label="From Older Balances"
+            value={formatCurrency(cashReceived.fromOlderBalances.amount)}
+            sub={`${cashReceived.fromOlderBalances.count} payment${
+              cashReceived.fromOlderBalances.count === 1 ? "" : "s"
+            }`}
+            icon={<History className="h-4 w-4" />}
           />
 
           <StatBlock
-            label="Outstanding"
-            value={formatCurrency(sales.outstandingBalance)}
-            emphasis={sales.outstandingBalance > 0 ? "warn" : "success"}
-            sub={
-              sales.outstandingBalance > 0
-                ? `${sales.count - totalPaymentCount} unpaid`
-                : "Fully settled"
-            }
-            icon={
-              sales.outstandingBalance > 0 ? (
-                <Clock className="h-4 w-4" />
-              ) : (
-                <CheckCircle2 className="h-4 w-4" />
-              )
-            }
+            label="Sold Today"
+            value={formatCurrency(sales.totalAmount)}
+            sub={`${sales.count} sale${sales.count === 1 ? "" : "s"}`}
+            icon={<TrendingUp className="h-4 w-4" />}
           />
+        </div>
+
+        {/* ===== SECONDARY ROW: Outstanding + Credit Payers ===== */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-xl border border-border bg-background px-4 py-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Outstanding on Today's Sales
+              </p>
+
+              <span
+                className={cn(
+                  "text-muted-foreground/70",
+                  sales.outstandingBalance > 0
+                    ? "text-[hsl(var(--warning,38_92%_50%))]"
+                    : "text-[hsl(var(--success,142_71%_45%))]",
+                )}
+              >
+                {sales.outstandingBalance > 0 ? (
+                  <Clock className="h-4 w-4" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4" />
+                )}
+              </span>
+            </div>
+
+            <p
+              className={cn(
+                "mt-1.5 text-2xl font-semibold tabular-nums leading-none",
+                sales.outstandingBalance > 0
+                  ? "text-[hsl(var(--warning,38_92%_50%))]"
+                  : "text-[hsl(var(--success,142_71%_45%))]",
+              )}
+            >
+              {formatCurrency(sales.outstandingBalance)}
+            </p>
+
+            <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+              <span>
+                {formatCurrency(sales.paidAgainstTodaysSales)} of{" "}
+                {formatCurrency(sales.totalAmount)} paid
+              </span>
+
+              <span className="tabular-nums">{paidPercent.toFixed(0)}%</span>
+            </div>
+
+            <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-all",
+                  paidPercent >= 100 ? "bg-emerald-500" : "bg-sky-500",
+                )}
+                style={{ width: `${paidPercent}%` }}
+              />
+            </div>
+          </div>
 
           <StatBlock
             label="Credit Payers"
             value={String(paymentsReceivedToday.length)}
-            sub={`${totalCreditPaymentTransactions} repayments`}
+            sub={`${totalCreditPaymentTransactions} repayment${
+              totalCreditPaymentTransactions === 1 ? "" : "s"
+            }`}
             icon={<Users className="h-4 w-4" />}
           />
         </div>
 
         {/* ===== BOTTOM ROW: 3 Columns ===== */}
         <div className="grid grid-cols-3 gap-6">
-          {/* Payment Methods */}
+          {/* Cash by Method */}
           <section>
             <SectionHeading icon={<Wallet className="h-3.5 w-3.5" />}>
-              Payment Methods
+              Cash by Method
             </SectionHeading>
 
             <div className="rounded-xl border border-border bg-background px-4 py-1">
               <div className="divide-y divide-border/60">
                 <MethodRow
                   label="Cash"
-                  amount={sales.byPaymentMethod.CASH.amount}
-                  count={sales.byPaymentMethod.CASH.count}
+                  amount={cashReceived.byMethod.CASH.amount}
+                  count={cashReceived.byMethod.CASH.count}
                   color="emerald"
                 />
 
                 <MethodRow
                   label="Transfer"
-                  amount={sales.byPaymentMethod.TRANSFER.amount}
-                  count={sales.byPaymentMethod.TRANSFER.count}
+                  amount={cashReceived.byMethod.TRANSFER.amount}
+                  count={cashReceived.byMethod.TRANSFER.count}
                   color="sky"
                 />
               </div>
+
+              <div className="flex items-center justify-between border-t border-border/60 py-2.5 text-xs">
+                <span className="text-muted-foreground">Total received</span>
+
+                <span className="font-semibold tabular-nums text-foreground">
+                  {formatCurrency(cashReceived.total.amount)}
+                </span>
+              </div>
+
+              <SplitBar
+                fromTodaysSales={cashReceived.fromTodaysSales.amount}
+                fromOlderBalances={cashReceived.fromOlderBalances.amount}
+              />
             </div>
           </section>
 
@@ -337,6 +467,10 @@ function SalesSummary({
                       customerName={customer.customerName}
                       amount={transaction.amount}
                       method={transaction.method}
+                      appliedToTodaysSales={transaction.appliedToTodaysSales}
+                      appliedToOlderBalances={
+                        transaction.appliedToOlderBalances
+                      }
                     />
                   )),
                 )}

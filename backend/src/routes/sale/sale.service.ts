@@ -329,148 +329,115 @@ export const salesService = {
 
   getSalesSummary: async (query: GetSalesSummaryQuery) => {
     const targetDate = query.date ? new Date(query.date) : new Date();
-
     const start = startOfDay(targetDate);
     const end = endOfDay(targetDate);
 
-    const totalProduct = await movementService.getMovementTotals({
-      type: "SALE",
-      startDate: start,
-      endDate: end,
-    });
-
+    // 1. Today's sales
     const todaysSales = await prisma.sale.findMany({
-      where: {
-        saleDate: {
-          gte: start,
-          lte: end,
-        },
-      },
-      select: {
-        id: true,
-        totalAmount: true,
-      },
+      where: { saleDate: { gte: start, lte: end } },
+      select: { id: true, totalAmount: true, status: true },
     });
-
-    const salesCount = todaysSales.length;
-
+    const todaysSaleIds = todaysSales.map((s) => s.id);
+    const todaysSaleIdSet = new Set(todaysSaleIds);
     const salesTotalAmount = todaysSales.reduce(
-      (sum, sale) => sum + Number(sale.totalAmount),
+      (s, x) => s + Number(x.totalAmount),
       0,
     );
 
-    const todaysSaleIds = todaysSales.map((sale) => sale.id);
-
-    const directPaymentsToday = todaysSaleIds.length
-      ? await prisma.payment.groupBy({
+    // 2. Cash in today — direct payments + credit payments
+    const [directPaymentsByMethod, creditTransactionsByMethod] =
+      await Promise.all([
+        prisma.payment.groupBy({
           by: ["method"],
-          where: {
-            saleId: {
-              in: todaysSaleIds,
-            },
-            transactionId: null,
-          },
-          _sum: {
-            amount: true,
-          },
-          _count: {
-            _all: true,
-          },
-        })
-      : [];
+          where: { paymentDate: { gte: start, lte: end }, transactionId: null },
+          _sum: { amount: true },
+          _count: { _all: true },
+        }),
+        prisma.paymentTransaction.groupBy({
+          by: ["method"],
+          where: { createdAt: { gte: start, lte: end } },
+          _sum: { amount: true },
+          _count: { _all: true },
+        }),
+      ]);
 
+    type Bucket = { amount: number; count: number };
+    const byMethod: Record<"CASH" | "TRANSFER", Bucket> = {
+      CASH: { amount: 0, count: 0 },
+      TRANSFER: { amount: 0, count: 0 },
+    };
+    const total: Bucket = { amount: 0, count: 0 };
+
+    for (const row of directPaymentsByMethod) {
+      const amt = Number(row._sum.amount ?? 0);
+      byMethod[row.method].amount += amt;
+      byMethod[row.method].count += row._count._all;
+      total.amount += amt;
+      total.count += row._count._all;
+    }
+    for (const row of creditTransactionsByMethod) {
+      const amt = Number(row._sum.amount ?? 0);
+      byMethod[row.method].amount += amt;
+      byMethod[row.method].count += row._count._all;
+      total.amount += amt;
+      total.count += row._count._all;
+    }
+
+    // 3. Every Payment row whose cash event happened today
+    //    (either direct OR via a PaymentTransaction created today).
+    const [directToday, viaTxToday] = await Promise.all([
+      prisma.payment.findMany({
+        where: { paymentDate: { gte: start, lte: end }, transactionId: null },
+        select: { saleId: true, amount: true, method: true },
+      }),
+      prisma.payment.findMany({
+        where: { transaction: { createdAt: { gte: start, lte: end } } },
+        select: { saleId: true, amount: true, method: true },
+      }),
+    ]);
+    const todaysCashPayments = [...directToday, ...viaTxToday];
+
+    const fromTodaysSales: Bucket = { amount: 0, count: 0 };
+    const fromOlderBalances: Bucket = { amount: 0, count: 0 };
+    const splitByMethod = {
+      CASH: { fromTodaysSales: 0, fromOlderBalances: 0 },
+      TRANSFER: { fromTodaysSales: 0, fromOlderBalances: 0 },
+    };
+
+    for (const p of todaysCashPayments) {
+      const amt = Number(p.amount);
+      if (todaysSaleIdSet.has(p.saleId)) {
+        fromTodaysSales.amount += amt;
+        fromTodaysSales.count += 1;
+        splitByMethod[p.method].fromTodaysSales += amt;
+      } else {
+        fromOlderBalances.amount += amt;
+        fromOlderBalances.count += 1;
+        splitByMethod[p.method].fromOlderBalances += amt;
+      }
+    }
+
+    // 4. Paid-against-today's-sales (any time, any method)
+    const paidAgg = todaysSaleIds.length
+      ? await prisma.payment.aggregate({
+          where: { saleId: { in: todaysSaleIds } },
+          _sum: { amount: true },
+        })
+      : null;
+    const paidAgainstTodaysSales = Number(paidAgg?._sum.amount ?? 0);
+
+    // 5. Per-customer credit payments today, with allocation split
     const customerPaymentsToday = await prisma.paymentTransaction.findMany({
-      where: {
-        createdAt: {
-          gte: start,
-          lte: end,
-        },
-      },
+      where: { createdAt: { gte: start, lte: end } },
       select: {
         id: true,
         amount: true,
         method: true,
-        customerId: true,
-        customer: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
+        customer: { select: { id: true, name: true } },
+        payments: { select: { saleId: true, amount: true } },
       },
-      orderBy: {
-        createdAt: "asc",
-      },
+      orderBy: { createdAt: "asc" },
     });
-
-    const paymentMethodTotals = new Map<
-      PaymentMethod,
-      {
-        amount: number;
-        count: number;
-      }
-    >();
-
-    for (const payment of directPaymentsToday) {
-      const method = payment.method;
-
-      const current = paymentMethodTotals.get(method) ?? {
-        amount: 0,
-        count: 0,
-      };
-
-      paymentMethodTotals.set(method, {
-        amount: current.amount + Number(payment._sum.amount ?? 0),
-        count: current.count + payment._count._all,
-      });
-    }
-
-    for (const transaction of customerPaymentsToday) {
-      const method = transaction.method;
-
-      const current = paymentMethodTotals.get(method) ?? {
-        amount: 0,
-        count: 0,
-      };
-
-      paymentMethodTotals.set(method, {
-        amount: current.amount + Number(transaction.amount),
-        count: current.count + 1,
-      });
-    }
-
-    const salesByMethod = {
-      CASH: paymentMethodTotals.get("CASH") ?? {
-        amount: 0,
-        count: 0,
-      },
-      TRANSFER: paymentMethodTotals.get("TRANSFER") ?? {
-        amount: 0,
-        count: 0,
-      },
-    };
-
-    const paymentsAppliedToTodaysSales = todaysSaleIds.length
-      ? await prisma.payment.aggregate({
-          where: {
-            saleId: {
-              in: todaysSaleIds,
-            },
-          },
-          _sum: {
-            amount: true,
-          },
-        })
-      : null;
-
-    const paidAgainstTodaysSales = Number(
-      paymentsAppliedToTodaysSales?._sum.amount ?? 0,
-    );
-
-    const outstandingBalance = Math.max(
-      0,
-      salesTotalAmount - paidAgainstTodaysSales,
-    );
 
     const byCustomerMap = new Map<
       string,
@@ -478,49 +445,71 @@ export const salesService = {
         customerId: string;
         customerName: string;
         totalAmount: number;
+        appliedToTodaysSales: number;
+        appliedToOlderBalances: number;
         transactions: {
           transactionId: string;
           amount: number;
-          method: PaymentMethod;
+          method: "CASH" | "TRANSFER";
+          appliedToTodaysSales: number;
+          appliedToOlderBalances: number;
         }[];
       }
     >();
 
-    for (const transaction of customerPaymentsToday) {
-      const customer = transaction.customer;
-
-      const entry = byCustomerMap.get(customer.id) ?? {
-        customerId: customer.id,
-        customerName: customer.name,
+    for (const tx of customerPaymentsToday) {
+      let today = 0;
+      let older = 0;
+      for (const p of tx.payments) {
+        if (todaysSaleIdSet.has(p.saleId)) today += Number(p.amount);
+        else older += Number(p.amount);
+      }
+      const entry = byCustomerMap.get(tx.customer.id) ?? {
+        customerId: tx.customer.id,
+        customerName: tx.customer.name,
         totalAmount: 0,
+        appliedToTodaysSales: 0,
+        appliedToOlderBalances: 0,
         transactions: [],
       };
-
-      entry.totalAmount += Number(transaction.amount);
-
+      entry.totalAmount += Number(tx.amount);
+      entry.appliedToTodaysSales += today;
+      entry.appliedToOlderBalances += older;
       entry.transactions.push({
-        transactionId: transaction.id,
-        amount: Number(transaction.amount),
-        method: transaction.method,
+        transactionId: tx.id,
+        amount: Number(tx.amount),
+        method: tx.method,
+        appliedToTodaysSales: today,
+        appliedToOlderBalances: older,
       });
-
-      byCustomerMap.set(customer.id, entry);
+      byCustomerMap.set(tx.customer.id, entry);
     }
 
-    const paymentsReceivedToday = Array.from(byCustomerMap.values());
+    const totalProduct = await movementService.getMovementTotals({
+      type: "SALE",
+      startDate: start,
+      endDate: end,
+    });
 
     return {
       date: start.toISOString().slice(0, 10),
-
-      sales: {
-        count: salesCount,
-        totalAmount: salesTotalAmount,
-        byPaymentMethod: salesByMethod,
-        outstandingBalance,
+      cashReceived: {
+        total,
+        byMethod,
+        fromTodaysSales,
+        fromOlderBalances,
+        splitByMethod,
       },
-
-      paymentsReceivedToday,
-
+      sales: {
+        count: todaysSales.length,
+        totalAmount: salesTotalAmount,
+        paidAgainstTodaysSales,
+        outstandingBalance: Math.max(
+          0,
+          salesTotalAmount - paidAgainstTodaysSales,
+        ),
+      },
+      paymentsReceivedToday: Array.from(byCustomerMap.values()),
       totalProduct,
     };
   },
