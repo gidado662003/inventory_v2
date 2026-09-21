@@ -10,6 +10,13 @@ import { requireAuth } from "./middleware/requireAuth";
 
 const allRoutes = express.Router();
 
+allRoutes.get("/health", (_req, res) => {
+  res.status(200).json({
+    status: "ok",
+    message: "API is running",
+  });
+});
+
 allRoutes.use("/auth", authRoutes);
 allRoutes.use(requireAuth);
 allRoutes.use("/product", productRoutes);
