@@ -1,22 +1,23 @@
 module.exports = {
-  apps : [{
-    script: 'index.js',
-    watch: '.'
-  }, {
-    script: './service-worker/',
-    watch: ['./service-worker']
-  }],
-
-  deploy : {
-    production : {
-      user : 'SSH_USERNAME',
-      host : 'SSH_HOSTMACHINE',
-      ref  : 'origin/master',
-      repo : 'GIT_REPOSITORY',
-      path : 'DESTINATION_PATH',
-      'pre-deploy-local': '',
-      'post-deploy' : 'npm install && pm2 reload ecosystem.config.js --env production',
-      'pre-setup': ''
-    }
-  }
+  apps: [
+    {
+      name: "inventory-backend",
+      cwd: "./backend",
+      script: "npm",
+      args: "run dev",
+      env: {
+        NODE_ENV: "development",
+        PORT: 4000,
+      },
+    },
+    {
+      name: "inventory-client",
+      cwd: "./client",
+      script: "npm",
+      args: "run start",
+      env: {
+        NODE_ENV: "production",
+      },
+    },
+  ],
 };

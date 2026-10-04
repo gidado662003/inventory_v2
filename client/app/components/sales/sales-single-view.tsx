@@ -22,9 +22,11 @@ function SalesSingleView({ sale, id }: { sale: Sale; id: string }) {
             <ArrowLeft className="h-4 w-4" />
             Back to sales
           </Link>
-          {sale.status === "CREDIT" && (
-            <AddPaymentButton saleId={id} amountLeft={balance} type="sale" />
-          )}
+          {sale.status === "CREDIT" &&
+            new Date(sale.saleDate).toDateString() ===
+              new Date().toDateString() && (
+              <AddPaymentButton saleId={id} amountLeft={balance} type="sale" />
+            )}
         </div>
 
         <div className="flex items-start justify-between">

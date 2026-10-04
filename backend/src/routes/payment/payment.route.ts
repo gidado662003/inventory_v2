@@ -4,6 +4,7 @@ const paymentRoutes = express.Router();
 
 paymentRoutes.post("/", paymentController.createPayment);
 paymentRoutes.get("/", paymentController.getPayments);
+paymentRoutes.get("/transaction", paymentController.getTransactionPayments);
 paymentRoutes.get("/sale/:saleId", paymentController.getPaymentsForSale);
 paymentRoutes.get(
   "/customer/:customerId",

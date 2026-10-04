@@ -8,7 +8,6 @@ import {
 export const paymentController = {
   createPayment: catchAsync(async (req, res) => {
     const { data, success, error } = paymentWithSaleSchema.safeParse(req.body);
-
     const recordedById = req.user?.id as string;
     if (!success) {
       throw new AppError("bad request", 400);
@@ -21,11 +20,21 @@ export const paymentController = {
     res.status(201).json({ success: true, response });
   }),
   getPayments: catchAsync(async (req, res) => {
+    console.log(req.user);
+
     const { data, success } = getPaymentsQuerySchema.safeParse(req.query);
     if (!success) {
       throw new AppError("bad request", 400);
     }
     const response = await paymentService.getPayments(data);
+    res.status(200).json({ success: true, response });
+  }),
+  getTransactionPayments: catchAsync(async (req, res) => {
+    const { data, success } = getPaymentsQuerySchema.safeParse(req.query);
+    if (!success) {
+      throw new AppError("bad request", 400);
+    }
+    const response = await paymentService.getTransactionPayments(data);
     res.status(200).json({ success: true, response });
   }),
   getPaymentsForSale: catchAsync(async (req, res) => {

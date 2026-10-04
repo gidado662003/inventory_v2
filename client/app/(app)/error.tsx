@@ -23,7 +23,7 @@ export default function Error({
   return (
     <div className="flex flex-col items-center justify-center gap-4 py-20">
       <h2 className="text-lg font-semibold">Failed to load</h2>
-      <p className="text-sm text-muted">{message}</p>
+      <p className="text-sm uppercase">{message}</p>
       <Button onClick={reset}>Try again</Button>
     </div>
   );

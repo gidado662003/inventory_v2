@@ -1,7 +1,11 @@
 import "server-only";
 
 import { serverGet } from "@/lib/api/http/server";
-import { paymentSchema, paymentsListResponseSchema } from "./schema";
+import {
+  paymentSchema,
+  paymentsListResponseSchema,
+  transactionPaymentsListResponseSchema,
+} from "./schema";
 import type { PaymentsListQuery } from "./schema";
 import { z } from "zod";
 
@@ -26,6 +30,20 @@ export async function getPayments(
     },
   });
   return paymentsListResponseSchema.parse(data);
+}
+
+export async function getTransactionPayments(
+  query: PaymentsListQuery = { page: 1, limit: 20 },
+) {
+  const data = await serverGet<unknown>(
+    `payment/transaction${buildQueryString(query)}`,
+    {
+      next: {
+        tags: ["payments"],
+      },
+    },
+  );
+  return transactionPaymentsListResponseSchema.parse(data);
 }
 
 export async function getPaymentsForSale(saleId: string) {

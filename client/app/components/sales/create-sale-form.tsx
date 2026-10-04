@@ -69,6 +69,8 @@ export function CreateSalePage() {
   }, [products, query]);
 
   function addProduct(product: Product) {
+    if (product.stockQuantity <= 0) return;
+
     const alias = product.aliases?.find((a) =>
       a.name.toLowerCase().includes(query.toLowerCase()),
     );
@@ -169,13 +171,19 @@ export function CreateSalePage() {
                     const alias = p.aliases?.find((a) =>
                       a.name.toLowerCase().includes(query.toLowerCase()),
                     );
+                    const outOfStock = p.stockQuantity <= 0;
 
                     return (
                       <button
                         key={p.id}
                         type="button"
+                        disabled={outOfStock}
                         onClick={() => addProduct(p)}
-                        className="flex w-full items-center justify-between border-b px-4 py-3 text-left last:border-0 hover:bg-muted"
+                        className={`flex w-full items-center justify-between border-b px-4 py-3 text-left last:border-0 ${
+                          outOfStock
+                            ? "cursor-not-allowed opacity-50"
+                            : "hover:bg-muted"
+                        }`}
                       >
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium">
@@ -187,6 +195,18 @@ export function CreateSalePage() {
                               {p.name}
                             </p>
                           )}
+
+                          <p
+                            className={`text-xs ${
+                              outOfStock
+                                ? "font-medium text-destructive"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            {outOfStock
+                              ? "Out of stock"
+                              : `In stock: ${p.stockQuantity.toLocaleString()}`}
+                          </p>
                         </div>
 
                         <span className="ml-4 shrink-0 text-sm font-medium">
@@ -245,7 +265,8 @@ export function CreateSalePage() {
                         )}
 
                         <p className="mt-1 text-xs text-muted-foreground">
-                          ₦{product.price.toLocaleString()} each
+                          ₦{product.price.toLocaleString()} each · In stock:{" "}
+                          {product.stockQuantity.toLocaleString()}
                         </p>
                       </div>
 
@@ -360,7 +381,7 @@ export function CreateSalePage() {
                 onChange={(e) => setCredit(e.target.checked)}
                 className="h-4 w-4"
               />
-              Credit sale
+              Customer/Credit sale
             </label>
 
             {credit && (

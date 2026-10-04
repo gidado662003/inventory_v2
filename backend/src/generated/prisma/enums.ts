@@ -48,3 +48,11 @@ export const InventoryAdjustmentReason = {
 } as const
 
 export type InventoryAdjustmentReason = (typeof InventoryAdjustmentReason)[keyof typeof InventoryAdjustmentReason]
+
+
+export const Role = {
+  ADMIN: 'ADMIN',
+  STAFF: 'STAFF'
+} as const
+
+export type Role = (typeof Role)[keyof typeof Role]

@@ -115,13 +115,14 @@ export const createSaleResponseSchema = z.object({
   payments: z.array(salePaymentSchema),
 });
 
-// ─────────────────────────────────────────────
-// SALES SUMMARY
-// ─────────────────────────────────────────────
-
 export const paymentMethodBreakdownSchema = z.object({
   amount: z.number(),
   count: z.number(),
+});
+
+export const paymentByMethodSchema = z.object({
+  CASH: paymentMethodBreakdownSchema,
+  TRANSFER: paymentMethodBreakdownSchema,
 });
 
 export const cashSplitSchema = z.object({
@@ -157,16 +158,15 @@ export const salesSummarySchema = z.object({
 
   cashReceived: z.object({
     total: paymentMethodBreakdownSchema,
-    byMethod: z.object({
-      CASH: paymentMethodBreakdownSchema,
-      TRANSFER: paymentMethodBreakdownSchema,
-    }),
+    byMethod: paymentByMethodSchema,
     fromTodaysSales: paymentMethodBreakdownSchema,
     fromOlderBalances: paymentMethodBreakdownSchema,
     splitByMethod: z.object({
       CASH: cashSplitSchema,
       TRANSFER: cashSplitSchema,
     }),
+    todaysSalesPaymentByMethod: paymentByMethodSchema,
+    olderBalancePaymentByMethod: paymentByMethodSchema,
   }),
 
   sales: z.object({
@@ -174,15 +174,12 @@ export const salesSummarySchema = z.object({
     totalAmount: z.number(),
     paidAgainstTodaysSales: z.number(),
     outstandingBalance: z.number(),
+    paymentByMethod: paymentByMethodSchema,
   }),
 
   paymentsReceivedToday: z.array(salesSummaryByCustomerSchema),
   totalProduct: z.array(salesProductPerDateSchema),
 });
-
-// ─────────────────────────────────────────────
-// TYPES
-// ─────────────────────────────────────────────
 
 export type SalesSummaryResponse = z.infer<typeof salesSummarySchema>;
 

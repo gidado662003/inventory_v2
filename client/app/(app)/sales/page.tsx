@@ -25,7 +25,7 @@ export default async function SalesPage({
   };
 
   const data = await getSales(query);
-  const salesItem = await getSalesItems(query);
+  const salesItem = await getSalesItems();
   const summary = await getSalesSummary(query.startDate);
 
   return (

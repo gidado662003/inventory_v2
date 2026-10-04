@@ -18,8 +18,11 @@ export const requireAuth = (
   const token = authHeader.slice(7);
 
   try {
-    const payload = jwt.verify(token, ACCESS_TOKEN_SECRET) as { sub: string };
-    req.user = { id: payload.sub };
+    const payload = jwt.verify(token, ACCESS_TOKEN_SECRET) as {
+      sub: string;
+      role: string;
+    };
+    req.user = { id: payload.sub, role: payload.role };
     next();
   } catch {
     next(new AppError("Unauthorized", 401));

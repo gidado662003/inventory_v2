@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import * as salesClient from "./client";
+import { productKeys } from "../product/queries";
 import type {
   CreateSaleInput,
   EditSaleItemInput,
@@ -39,6 +40,7 @@ export function useCreateSale() {
     mutationFn: (input: CreateSaleInput) => salesClient.createSale(input),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: salesKeys.all });
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
       router.refresh();
     },
   });

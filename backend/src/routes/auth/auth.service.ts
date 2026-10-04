@@ -6,14 +6,14 @@ import { AppError } from "../../utils/AppError";
 import { SignupInput, LoginInput } from "./auth.schema";
 
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET!;
-const ACCESS_TOKEN_EXPIRY = "15m";
+const ACCESS_TOKEN_EXPIRY = "4h";
 const REFRESH_TOKEN_EXPIRY_DAYS = 7;
 
 const hashToken = (token: string) =>
   crypto.createHash("sha256").update(token).digest("hex");
 
-const generateAccessToken = (userId: string) =>
-  jwt.sign({ sub: userId }, ACCESS_TOKEN_SECRET, {
+const generateAccessToken = (userId: string, role: string) =>
+  jwt.sign({ sub: userId, role }, ACCESS_TOKEN_SECRET, {
     expiresIn: ACCESS_TOKEN_EXPIRY,
   });
 
@@ -47,7 +47,7 @@ export const authService = {
       throw new AppError("Invalid credentials", 401);
     }
 
-    const accessToken = generateAccessToken(user.id);
+    const accessToken = generateAccessToken(user.id, user.role);
     const refreshToken = generateRefreshToken();
 
     const expiresAt = new Date();
@@ -60,7 +60,7 @@ export const authService = {
     return {
       accessToken,
       refreshToken,
-      user: { id: user.id, name: user.name },
+      user: { id: user.id, name: user.name, role: user.role },
     };
   },
 
@@ -71,6 +71,9 @@ export const authService = {
 
     const storedToken = await prisma.refreshToken.findUnique({
       where: { tokenHash: hashToken(refreshToken) },
+      include: {
+        user: true,
+      },
     });
 
     if (
@@ -100,7 +103,10 @@ export const authService = {
     ]);
 
     return {
-      accessToken: generateAccessToken(storedToken.userId),
+      accessToken: generateAccessToken(
+        storedToken.userId,
+        storedToken.user.role,
+      ),
       refreshToken: newRefreshToken,
     };
   },
@@ -111,5 +117,16 @@ export const authService = {
       where: { tokenHash: hashToken(refreshToken) },
       data: { revoked: true },
     });
+  },
+  me: async (id: string | undefined) => {
+    if (!id) return;
+    const response = await prisma.user.findFirst({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+    return response;
   },
 };

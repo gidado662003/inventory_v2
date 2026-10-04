@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { getPayments } from "@/lib/api/payment/server";
+import { getPayments, getTransactionPayments } from "@/lib/api/payment/server";
 import { PaymentsListView } from "@/app/components/payments/payments-list-view";
 import type { PaymentsListQuery } from "@/lib/api/payment/schema";
 
@@ -20,7 +20,9 @@ export default async function PaymentsPage({
     endDate: (params.endDate as string) || undefined,
   };
 
-  const data = await getPayments(query);
+  // const data = await getPayments(query);
+  const data = await getTransactionPayments(query);
+  // console.log("🚀 ~ PaymentsPage ~ test:", test);
 
   return (
     <Suspense fallback={<p className="text-muted">Loading...</p>}>

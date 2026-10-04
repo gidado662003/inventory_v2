@@ -142,4 +142,48 @@ export const paymentService = {
       },
     };
   },
+  getTransactionPayments: async (query: GetPaymentsQuery) => {
+    const now = new Date();
+    const startDate = query.startDate
+      ? new Date(query.startDate)
+      : startOfDay(now);
+    const endDate = query.endDate ? new Date(query.endDate) : endOfDay(now);
+
+    if (startDate > endDate) {
+      throw new AppError("startDate cannot be after endDate", 400);
+    }
+
+    const where: Prisma.PaymentTransactionWhereInput = {
+      createdAt: { gte: startDate, lte: endDate },
+      amount: { gt: 0 },
+      ...(query.customerId && { customerId: query.customerId }),
+    };
+    const [paymentsTransaction, total] = await Promise.all([
+      prisma.paymentTransaction.findMany({
+        // where,
+        include: {
+          customer: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+
+        orderBy: { createdAt: "desc" },
+        // skip: (query.page - 1) * query.limit,
+        // take: query.limit,
+      }),
+      prisma.paymentTransaction.count({ where }),
+    ]);
+    return {
+      paymentsTransaction,
+      pagination: {
+        page: query.page,
+        limit: query.limit,
+        total,
+        totalPages: Math.ceil(total / query.limit),
+      },
+    };
+  },
 };

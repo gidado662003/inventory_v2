@@ -112,12 +112,12 @@ export function CustomerDetailView({
               {customer.sales.map((sale) => (
                 <tr
                   key={sale.id}
-                  className="border-b border-dashed border-foreground/20 last:border-b-0 hover:bg-foreground/[0.03]"
+                  className="border-b border-dashed border-foreground/20 last:border-b-0 "
                 >
                   <td className="py-3">
                     <Link
                       href={`/sales/${sale.id}`}
-                      className="underline decoration-foreground/20 underline-offset-4 hover:text-accent hover:decoration-accent"
+                      className="underline decoration-foreground/20 underline-offset-4 hover:text-accent-foreground hover:decoration-accent"
                     >
                       {formatDate(sale.saleDate)}
                     </Link>

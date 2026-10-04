@@ -30,6 +30,19 @@ export const paymentSchema = z.object({
     .optional(),
 });
 
+export const paymentTransactionSchema = z.object({
+  id: z.string().uuid(),
+  customerId: z.string().uuid(),
+  amount: z.coerce.number(),
+  method: z.enum(["CASH", "TRANSFER"]),
+  recordedById: z.string().uuid(),
+  createdAt: z.string().datetime(),
+  customer: z.object({
+    id: z.string().uuid(),
+    name: z.string(),
+  }),
+});
+
 export const createPaymentSchema = z.object({
   saleId: z.string().uuid("Sale is required"),
   amount: z.number().positive("Amount must be positive"),
@@ -56,7 +69,16 @@ export const paymentsListResponseSchema = z.object({
   pagination: paginationSchema,
 });
 
+export const transactionPaymentsListResponseSchema = z.object({
+  paymentsTransaction: z.array(paymentTransactionSchema),
+  pagination: paginationSchema,
+});
+
 export type Payment = z.infer<typeof paymentSchema>;
+export type PaymentTransaction = z.infer<typeof paymentTransactionSchema>;
 export type CreatePaymentInput = z.infer<typeof createPaymentSchema>;
 export type PaymentsListQuery = z.infer<typeof paymentsListQuerySchema>;
 export type PaymentsListResponse = z.infer<typeof paymentsListResponseSchema>;
+export type TransactionPaymentsListResponse = z.infer<
+  typeof transactionPaymentsListResponseSchema
+>;
