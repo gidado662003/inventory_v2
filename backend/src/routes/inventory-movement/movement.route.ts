@@ -5,7 +5,7 @@ const movementRoutes = express.Router();
 
 movementRoutes.post(
   "/",
-  requireRole("ADMIN", "STAFF"),
+  requireRole("ADMIN"),
   movementController.createMovement,
 );
 movementRoutes.get("/", movementController.getMovements);
