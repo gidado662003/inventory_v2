@@ -5,6 +5,7 @@ import {
   ProductAliasesInput,
   updateProductInput,
 } from "./product.schema";
+import movementService from "../inventory-movement/movement.service";
 const productService = {
   createProduct: async (product: CreateProductInput) => {
     const exist = await prisma.product.findFirst({
@@ -19,24 +20,40 @@ const productService = {
 
     const { aliases, ...productData } = product;
 
-    const newProduct = await prisma.product.create({
-      data: {
-        ...productData,
+    const createProduct = await prisma.$transaction(async (tx) => {
+      const newProduct = tx.product.create({
+        data: {
+          ...productData,
+          stockQuantity: 0,
 
-        aliases: aliases
-          ? {
-              create: aliases.map((name) => ({
-                name,
-              })),
-            }
-          : undefined,
-      },
-      include: {
-        aliases: true,
-      },
+          aliases: aliases
+            ? {
+                create: aliases.map((name) => ({
+                  name,
+                })),
+              }
+            : undefined,
+        },
+        include: {
+          aliases: true,
+        },
+      });
+      await movementService.createMovementTx(tx, {
+        productId: (await newProduct).id,
+        type: "INITIAL_STOCK",
+        quantity: product.stockQuantity,
+      });
+      return tx.product.findUniqueOrThrow({
+        where: {
+          id: (await newProduct).id,
+        },
+        include: {
+          aliases: true,
+        },
+      });
     });
 
-    return newProduct;
+    return createProduct;
   },
   getProduct: async (searchString?: string) => {
     const product = await prisma.product.findMany({
