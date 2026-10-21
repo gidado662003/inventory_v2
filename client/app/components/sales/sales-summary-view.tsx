@@ -307,8 +307,8 @@ function SalesSummary({
       }
       open={open}
       onClose={onClose}
-      size="full"
-      hideDefaultClose={false}
+      size="lg"
+      // hideDefaultClose={false}
     >
       <div className="space-y-6 pt-2">
         {/* ===== TOP ROW: Key Metrics ===== */}

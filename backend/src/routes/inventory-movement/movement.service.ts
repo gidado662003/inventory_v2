@@ -20,89 +20,142 @@ const movementService = {
     tx: Prisma.TransactionClient,
     movement: createProductMovementInput,
   ) => {
+    const { productId, type, quantity } = movement;
+
+    if (!Number.isInteger(quantity) || quantity === 0) {
+      throw new AppError("Quantity must be a non-zero integer", 400);
+    }
+
+    if (type !== "ADJUSTMENT" && quantity < 0) {
+      throw new AppError(
+        "Quantity must be positive for this movement type",
+        400,
+      );
+    }
+
+    if (type === "ADJUSTMENT" && !movement.reason) {
+      throw new AppError("A reason is required for stock adjustments", 400);
+    }
+
     const product = await tx.product.findUnique({
-      where: {
-        id: movement.productId,
-      },
-      select: {
-        stockQuantity: true,
-      },
+      where: { id: productId },
+      select: { id: true },
     });
 
     if (!product) {
       throw new AppError("Product not found", 404);
     }
 
-    let newStockQuantity = product.stockQuantity;
+    let stockDelta: number;
 
-    switch (movement.type) {
+    switch (type) {
       case "INITIAL_STOCK":
-        newStockQuantity += movement.quantity;
-        break;
-
       case "RESTOCK":
-        newStockQuantity += movement.quantity;
+      case "RETURN":
+        stockDelta = quantity;
         break;
 
       case "SALE":
-        newStockQuantity -= movement.quantity;
-        break;
-
-      case "RETURN":
-        newStockQuantity += movement.quantity;
+        stockDelta = -quantity;
         break;
 
       case "ADJUSTMENT":
-        newStockQuantity += movement.quantity;
+        stockDelta = quantity;
         break;
 
       default:
         throw new AppError("Invalid movement type", 400);
     }
 
-    if (newStockQuantity < 0) {
-      throw new AppError("Insufficient stock", 400);
+    if (stockDelta < 0) {
+      const result = await tx.product.updateMany({
+        where: {
+          id: productId,
+          stockQuantity: { gte: Math.abs(stockDelta) },
+        },
+        data: {
+          stockQuantity: { decrement: Math.abs(stockDelta) },
+        },
+      });
+
+      if (result.count === 0) {
+        throw new AppError("Insufficient stock", 400);
+      }
+    } else {
+      await tx.product.update({
+        where: { id: productId },
+        data: {
+          stockQuantity: { increment: stockDelta },
+        },
+      });
     }
 
-    const createdMovement = await tx.inventoryMovement.create({
-      data: movement,
-    });
-
-    await tx.product.update({
-      where: {
-        id: movement.productId,
-      },
+    return tx.inventoryMovement.create({
       data: {
-        stockQuantity: newStockQuantity,
+        productId,
+        type,
+        quantity,
+        reason: movement.reason,
+        referenceId: movement.referenceId,
+        note: movement.note,
       },
     });
-
-    return createdMovement;
   },
-  getMovements: async (query: GetMovementsQuery) => {
-    const now = new Date();
-    const startDate = query.startDate
-      ? new Date(query.startDate)
-      : startOfDay(now);
-    const endDate = query.endDate ? new Date(query.endDate) : endOfDay(now);
 
-    if (startDate > endDate) {
+  getMovements: async (query: GetMovementsQuery) => {
+    const startDate = query.startDate
+      ? startOfDay(new Date(query.startDate))
+      : undefined;
+
+    const endDate = query.endDate
+      ? endOfDay(new Date(query.endDate))
+      : undefined;
+
+    if (startDate && endDate && startDate > endDate) {
       throw new AppError("startDate cannot be after endDate", 400);
     }
 
     const where: Prisma.InventoryMovementWhereInput = {
       ...(query.productId && { productId: query.productId }),
       ...(query.type && { type: query.type }),
-      createdAt: {
-        gte: startDate,
-        lte: endDate,
-      },
+      ...(query.search && {
+        product: {
+          OR: [
+            {
+              name: {
+                contains: query.search,
+                mode: "insensitive",
+              },
+            },
+            {
+              aliases: {
+                some: {
+                  name: {
+                    contains: query.search,
+                    mode: "insensitive",
+                  },
+                },
+              },
+            },
+          ],
+        },
+      }),
+      ...(startDate || endDate
+        ? {
+            createdAt: {
+              ...(startDate && { gte: startDate }),
+              ...(endDate && { lte: endDate }),
+            },
+          }
+        : {}),
     };
 
     const [movements, total] = await Promise.all([
       prisma.inventoryMovement.findMany({
         where,
-        include: { product: { select: { id: true, name: true } } },
+        include: {
+          product: { select: { id: true, name: true } },
+        },
         orderBy: { createdAt: "desc" },
         skip: (query.page - 1) * query.limit,
         take: query.limit,

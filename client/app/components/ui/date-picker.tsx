@@ -8,15 +8,24 @@ type DatePickerProps = {
   onClear?: () => void;
 };
 
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
 export function DatePicker({ value = "", onChange, onClear }: DatePickerProps) {
-  const currentDate = value || new Date().toISOString().split("T")[0];
+  const currentDate = value || formatLocalDate(new Date());
 
   function goToDate(direction: "prev" | "next") {
-    const date = new Date(`${currentDate}T00:00:00`);
+    const [year, month, day] = currentDate.split("-").map(Number);
+    const date = new Date(year, month - 1, day);
 
     date.setDate(date.getDate() + (direction === "prev" ? -1 : 1));
 
-    onChange(date.toISOString().split("T")[0]);
+    onChange(formatLocalDate(date));
   }
 
   function handleDateChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -24,9 +33,7 @@ export function DatePicker({ value = "", onChange, onClear }: DatePickerProps) {
   }
 
   function goToToday() {
-    const today = new Date().toISOString().split("T")[0];
-
-    onChange(today);
+    onChange(formatLocalDate(new Date()));
   }
 
   return (

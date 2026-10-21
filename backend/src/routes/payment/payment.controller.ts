@@ -20,8 +20,6 @@ export const paymentController = {
     res.status(201).json({ success: true, response });
   }),
   getPayments: catchAsync(async (req, res) => {
-    console.log(req.user);
-
     const { data, success } = getPaymentsQuerySchema.safeParse(req.query);
     if (!success) {
       throw new AppError("bad request", 400);

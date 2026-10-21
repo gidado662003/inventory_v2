@@ -9,6 +9,15 @@ export const inventoryMovementTypeSchema = z.enum([
   "ADJUSTMENT",
 ]);
 
+export const InventoryAdjustmentReason = z.enum([
+  "DAMAGED",
+  "EXPIRED",
+  "LOST",
+  "FOUND",
+  "CORRECTION",
+  "OTHER",
+]);
+
 export const inventoryMovementSchema = z.object({
   id: z.string().uuid(),
   productId: z.string().uuid(),
@@ -32,16 +41,18 @@ export const inventoryMovementSchema = z.object({
 export const createMovementSchema = z.object({
   productId: z.string().uuid("Product is required"),
   type: inventoryMovementTypeSchema,
+  reason: InventoryAdjustmentReason,
   quantity: z.number(),
 });
 
 export const movementsListQuerySchema = z.object({
   productId: z.string().uuid().optional(),
   type: inventoryMovementTypeSchema.optional(),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
-  page: z.number().int().min(1).default(1),
-  limit: z.number().int().min(1).max(100).default(20),
+  search: z.string().trim().max(100).optional(),
+  startDate: z.iso.date().optional(),
+  endDate: z.iso.date().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 
 export const movementsListResponseSchema = z.object({

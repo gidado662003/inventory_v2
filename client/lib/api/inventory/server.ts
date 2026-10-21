@@ -10,6 +10,7 @@ function buildQueryString(query: MovementsListQuery): string {
   if (query.type) params.set("type", query.type);
   if (query.startDate) params.set("startDate", query.startDate);
   if (query.endDate) params.set("endDate", query.endDate);
+  if (query.search) params.set("search", query.search);
   params.set("page", String(query.page));
   params.set("limit", String(query.limit));
   const qs = params.toString();
