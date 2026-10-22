@@ -18,7 +18,7 @@ type ModalProps = {
 const sizes = {
   sm: "sm:max-w-sm",
   md: "sm:max-w-lg",
-  lg: "sm:max-w-2xl",
+  lg: "sm:max-w-8xl",
 };
 
 const focusableSelector =
@@ -121,7 +121,7 @@ export function Modal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6"
+      className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-2"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget && dismissible) onClose();
       }}

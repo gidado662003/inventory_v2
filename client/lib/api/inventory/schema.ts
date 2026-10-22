@@ -41,7 +41,7 @@ export const inventoryMovementSchema = z.object({
 export const createMovementSchema = z.object({
   productId: z.string().uuid("Product is required"),
   type: inventoryMovementTypeSchema,
-  reason: InventoryAdjustmentReason,
+  reason: InventoryAdjustmentReason.optional(),
   quantity: z.number(),
 });
 

@@ -1,5 +1,5 @@
 "use client";
-
+import { toast } from "@/components/ui/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import * as salesClient from "./client";
@@ -10,6 +10,12 @@ import type {
   SalesListQuery,
 } from "./schema";
 
+export function showToast(message: string) {
+  toast.add({
+    title: "Sale failed",
+    description: message,
+  });
+}
 export const salesKeys = {
   all: ["sales"] as const,
   lists: () => [...salesKeys.all, "list"] as const,
@@ -42,6 +48,9 @@ export function useCreateSale() {
       queryClient.invalidateQueries({ queryKey: salesKeys.all });
       queryClient.invalidateQueries({ queryKey: productKeys.all });
       router.refresh();
+    },
+    onError: (error) => {
+      showToast(error.message);
     },
   });
 }

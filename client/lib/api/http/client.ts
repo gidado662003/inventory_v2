@@ -99,7 +99,9 @@ clientHttp.interceptors.request.use(
 
 clientHttp.interceptors.response.use(
   (response) => {
+    console.log("🚀 ~ response:", response);
     const envelope = response.data as ApiEnvelope;
+    console.log("🚀 ~ envelope:", envelope);
 
     if (!envelope.success) {
       throw new ApiError(envelope.message ?? "Request failed", response.status);

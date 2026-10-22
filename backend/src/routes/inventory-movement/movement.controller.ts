@@ -15,7 +15,7 @@ const movementController = {
       throw new AppError("bad request", 400);
     }
     const response = await movementService.createMovement(data);
-    res.status(201).json({ success: true, response });
+    res.status(201).json({ success: true, response, message: "test" });
   }),
   getMovements: catchAsync(async (req: Request, res: Response) => {
     const { data, success } = getMovementsQuerySchema.safeParse(req.query);

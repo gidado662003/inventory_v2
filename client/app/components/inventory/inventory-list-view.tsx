@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Search, SlidersHorizontal, PackageOpen, Plus, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-
+import { toast } from "@/components/ui/toast";
 import { useCreateMovement } from "@/lib/api/inventory/queries";
 import { useProducts } from "@/lib/api/product/queries";
 import { createMovementSchema } from "@/lib/api/inventory/schema";
@@ -108,7 +108,6 @@ function CreateMovementModal({
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-
     if (isPending) return;
 
     setFieldErrors({});
@@ -145,9 +144,10 @@ function CreateMovementModal({
       return;
     }
 
-    createMovement.mutate(result.data, {
+    const test = createMovement.mutate(result.data, {
       onSuccess: onClose,
     });
+    console.log("🚀 ~ handleSubmit ~ test:", test);
   }
 
   const amount = quantity === "" ? 0 : Number(quantity);

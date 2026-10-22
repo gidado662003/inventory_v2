@@ -41,8 +41,15 @@ export async function fetchSale(id: string): Promise<Sale> {
 
 export async function createSale(input: CreateSaleInput) {
   const parsed = createSaleSchema.parse(input);
-  const { data } = await clientHttp.post("/sales", parsed);
-  return createSaleResponseSchema.parse(data);
+
+  try {
+    const { data } = await clientHttp.post("/sales", parsed);
+
+    return createSaleResponseSchema.parse(data);
+  } catch (error) {
+    console.error("Failed to create sale:", error);
+    throw error;
+  }
 }
 
 export async function editSaleItems(

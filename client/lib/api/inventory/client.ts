@@ -26,7 +26,9 @@ export async function fetchMovements(
   query: MovementsListQuery = { page: 1, limit: 20 },
 ): Promise<MovementsListResponse> {
   const parsed = movementsListQuerySchema.parse(query);
-  const { data } = await clientHttp.get(`/movements${buildQueryString(parsed)}`);
+  const { data } = await clientHttp.get(
+    `/movements${buildQueryString(parsed)}`,
+  );
   return movementsListResponseSchema.parse(data);
 }
 
