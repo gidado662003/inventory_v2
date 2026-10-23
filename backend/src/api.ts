@@ -17,6 +17,16 @@ allRoutes.get("/health", (_req, res) => {
   });
 });
 
+allRoutes.get("/debug/db-config", (_req, res) => {
+  res.json({
+    databaseUrlExists: Boolean(process.env.DATABASE_URL),
+    databaseUrlLooksValid:
+      process.env.DATABASE_URL?.startsWith("postgresql://") ||
+      process.env.DATABASE_URL?.startsWith("postgres://"),
+    nodeEnv: process.env.NODE_ENV,
+  });
+});
+
 allRoutes.use("/auth", authRoutes);
 allRoutes.use(requireAuth);
 allRoutes.use("/product", productRoutes);
